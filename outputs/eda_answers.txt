@@ -1,0 +1,17 @@
+### Part A — Exploratory Data Analysis
+
+**1. What is this data about?**
+
+The dataset contains synthetic Swiggy Instamart customer, product and order information across six Indian cities. This analysis focuses on completed orders, their amounts, quantities, discounts and delivery times.
+
+**2. What do its distributions and statistics look like?**
+
+Completed order amounts have a mean of INR 269.91 and median of INR 135.00, with positive skewness of approximately 4.61. Q1 is INR 64.80 and Q3 is INR 297.00, indicating that most orders have relatively low values.
+
+**3. Are there outliers or anomalies?**
+
+The 1.5×IQR lower fence is INR -283.50 and the upper fence is INR 645.30. There are no lower outliers and 897 upper outliers. These high-value orders may represent unusually large purchases.
+
+**4. What relationships exist between variables?**
+
+The largest absolute correlation is between order amount and discount percentage (approximately -0.095). Order amount and quantity have a correlation of approximately +0.087. Both relationships are weak; correlation of this size does not establish causation.
