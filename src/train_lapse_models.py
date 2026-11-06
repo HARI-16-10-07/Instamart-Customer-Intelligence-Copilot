@@ -327,17 +327,32 @@ minority_class = training_data[
     training_data["lapsed"] == 1
 ]
 
-# Duplicate minority-class rows with replacement.
-minority_oversampled = resample(
+# Keep every original training row.
+# Add only enough duplicate minority-class rows
+# to make both classes equal in size.
+
+additional_samples_needed = (
+    len(majority_class) - len(minority_class)
+)
+
+minority_duplicates = resample(
     minority_class,
     replace=True,
-    n_samples=len(majority_class),
+    n_samples=additional_samples_needed,
     random_state=42
 )
 
-# Combine original majority and oversampled minority rows.
+# Combine:
+# 1. All original majority-class rows
+# 2. All original minority-class rows
+# 3. Additional duplicated minority-class rows
+
 balanced_training_data = pd.concat(
-    [majority_class, minority_oversampled],
+    [
+        majority_class,
+        minority_class,
+        minority_duplicates
+    ],
     ignore_index=True
 )
 
@@ -346,6 +361,16 @@ X_train_balanced = balanced_training_data.drop(
 )
 
 y_train_balanced = balanced_training_data["lapsed"]
+
+print("Original training distribution:")
+print(y_train.value_counts().sort_index())
+
+print("\nBalanced training distribution:")
+print(y_train_balanced.value_counts().sort_index())
+
+assert len(balanced_training_data) == 1140
+assert y_train_balanced.value_counts()[0] == 570
+assert y_train_balanced.value_counts()[1] == 570
 
 print("Original training distribution:")
 print(y_train.value_counts().sort_index())
