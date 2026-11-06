@@ -20,7 +20,7 @@ All monetary values in this project are represented in Indian Rupees (INR). The 
 - Python 3.12.3 (the version used to test this project).
 - Git.
 - Windows PowerShell or a compatible terminal.
- 
+
 ### Clone the repository
 
 ```bash
@@ -51,33 +51,105 @@ python generate_data.py
 
 This generates the raw CSV files and policy documents used by the project.
 
-### Part A - Current reproduction commands
+### Part A - Data Foundation
 
 Run the following commands in order:
 
+**1. Audit the raw datasets**
+
 ```bash
 python src/audit_raw_data.py
-python src/clean_data.py
-python src/create_database.py
-python src/validate_part_a.py
-python src/run_sql_analysis.py
 ```
 
-The validation script checks the cleaned data and database against the expected Part A results. Successful validation prints:
+**2. Clean the datasets**
+
+```bash
+python src/clean_data.py
+```
+
+**3. Create the SQLite database**
+
+```bash
+python src/create_database.py
+```
+
+**4. Validate Part A**
+
+```bash
+python src/validate_part_a.py
+```
+
+Successful validation prints:
 
 ```text
 ALL CHECKPOINTS PASSED
 ```
 
-Reproduction instructions for Parts B, C and D will be added when those implementations are completed.
+**5. Execute SQL and Pandas analysis**
 
-## 3. Part A
+```bash
+python src/run_sql_analysis.py
+```
 
-### Data Foundation
+### Part B - Customer Segments and Lapse Prediction
+
+Run the following commands after completing Part A:
+
+**6. Build customer RFM segments**
+
+```bash
+python src/build_customer_segments.py
+```
+
+**7. Prepare the lapse prediction dataset**
+
+```bash
+python src/prepare_lapse_data.py
+```
+
+**8. Train and evaluate lapse prediction models**
+
+```bash
+python src/train_lapse_models.py
+```
+
+**9. Generate the Premium customer retention list**
+
+```bash
+python src/create_retention_list.py
+```
+
+**10. Validate Part B**
+
+```bash
+python src/validate_part_b.py
+```
+
+Successful validation prints:
+
+```text
+ALL PART B CHECKPOINTS PASSED
+```
+
+Parts C and D will be added to the reproduction instructions after their implementations are completed and verified.
+
+## 3. Part A - Data Foundation
+
+### 3.1 Objective
 
 Part A converts the generated raw data into a trusted analytical dataset.
 
-#### Raw data audit
+The work includes:
+
+- Auditing the raw datasets.
+- Handling missing values and invalid records.
+- Removing duplicate records.
+- Standardizing customer and order information.
+- Creating an SQLite analytical database.
+- Executing SQL queries.
+- Performing Pandas analysis and exploratory data analysis.
+
+### 3.2 Raw Data Audit
 
 Six raw CSV files are generated:
 
@@ -88,9 +160,30 @@ Six raw CSV files are generated:
 - `agent_scenarios.csv`
 - `policy_eval.csv`
 
-The audit script examines the shape, data types, missing-value counts and missing-value percentages of the raw tables. The ticket data is read with `keep_default_na=False` to preserve empty ticket text for later processing.
+The audit script examines the shape, data types, missing-value counts and missing-value percentages of the raw tables.
 
-#### Customer data cleaning
+The ticket data is read with `keep_default_na=False` to preserve empty ticket text for later processing.
+
+**Important raw-data findings**
+
+| Raw data finding | Result |
+|---|---:|
+| Raw order rows | 13,084 |
+| Exact duplicate order rows | 119 |
+| Pending order rows | 656 |
+| Distinct order IDs | 12,309 |
+| Nonnumeric or missing order amounts | 120 |
+| Negative delivery times | 106 |
+| Blank delivery times | 2,541 |
+| Customers with blank ages | 61 |
+| Customers with ages outside 10-100 | 6 |
+| Distinct raw city spellings | 24 |
+| Distinct nonblank raw gender spellings | 10 |
+| Customers with blank gender | 30 |
+
+The audit script also reports the missing-value count and percentage for each column in the raw customer, product and order datasets.
+
+### 3.3 Customer Data Cleaning
 
 The customer dataset retains 1,200 rows.
 
@@ -103,11 +196,15 @@ The customer dataset retains 1,200 rows.
 | Missing ages filled | 67 |
 | Blank genders mapped to unknown | 30 |
 
-City names are stripped of surrounding whitespace and standardized using title case. Gender spellings are mapped to `male`, `female` or `unknown`. Blank gender values become `unknown`.
+City names are stripped of surrounding whitespace and standardized using title case.
 
-Ages outside the valid range of 10-100 are treated as missing. Missing ages are filled using the median age of the corresponding city, calculated using `groupby` and `transform`. Signup dates are converted to datetime values.
+Gender spellings are mapped to `male`, `female` or `unknown`. Blank gender values become `unknown`.
 
-Final city counts:
+Ages outside the valid range of 10-100 are treated as missing. Missing ages are filled using the median age of the corresponding city, calculated using `groupby` and `transform`.
+
+Signup dates are converted to datetime values.
+
+**Final city counts**
 
 | City | Customers |
 |---|---:|
@@ -118,15 +215,23 @@ Final city counts:
 | Hyderabad | 191 |
 | Mumbai | 184 |
 
-Final gender counts are 610 female, 560 male and 30 unknown. No missing ages remain, and the cleaned age range is 18-60.
+Final gender counts:
 
-#### Product data cleaning
+- Female: 610
+- Male: 560
+- Unknown: 30
 
-The product dataset retains all 40 rows. No product cleaning changes were required.
+No missing ages remain after cleaning. The cleaned age range is 18-60.
 
-#### Order data cleaning
+### 3.4 Product Data Cleaning
 
-The order-cleaning process applies the following operations:
+The product dataset retains all 40 rows.
+
+No product cleaning changes were required.
+
+### 3.5 Order Data Cleaning
+
+The order-cleaning process applies the following operations in sequence:
 
 1. Convert `order_ts` into datetime values.
 2. Remove 119 exact duplicate rows.
@@ -146,11 +251,15 @@ The cleaned orders dataset contains 12,309 unique order IDs.
 | Cancelled | 1,199 |
 | **Total** | **12,309** |
 
-Final checks confirm zero missing order amounts, zero missing delivery times among completed orders and 1,199 missing delivery times among cancelled orders.
+Final checks confirm:
+
+- Zero missing order amounts.
+- Zero missing delivery times among completed orders.
+- 1,199 missing delivery times among cancelled orders.
 
 Completed order revenue is **INR 2,998,668.80**.
 
-#### SQLite database
+### 3.6 SQLite Database
 
 The cleaned datasets are stored in `data/instamart.db`, an SQLite database containing three tables:
 
@@ -160,7 +269,11 @@ The cleaned datasets are stored in `data/instamart.db`, an SQLite database conta
 
 The database creation script defines primary keys, foreign keys and applicable constraints, loads the cleaned CSV data and checks foreign-key integrity.
 
-#### SQL analysis
+The `order_ts` values are stored as SQLite-compatible text in the format:
+
+`YYYY-MM-DD HH:MM:SS`
+
+### 3.7 SQL Analysis
 
 Seven SQL queries are stored in `sql/queries.sql` and executed through Pandas using `pd.read_sql_query`.
 
@@ -174,48 +287,112 @@ Seven SQL queries are stored in `sql/queries.sql` and executed through Pandas us
 | Q6 | Customer spending rankings within each city | 1,175 customers |
 | Q7 | Daily revenue and cumulative running total | 183 days |
 
-Q2 produces total completed revenue of INR 2,998,668.80. The highest city-category revenue is Bengaluru Electronics at INR 2,33,909.45.
+**Q1 - High-spending customers**
 
-Q5 calculates average completed customer spend of approximately INR 2,552.06.
+Uses filtering and aggregation to identify customers whose qualifying completed-order spending exceeds INR 8,000.
 
-Q6 demonstrates `RANK()`, `DENSE_RANK()` and `ROW_NUMBER()` window functions. There are eight rows where `RANK()` differs from `ROW_NUMBER()` because of tied spending values.
+**Q2 - Revenue by city and category**
 
-Q7 produces a final cumulative revenue of INR 2,998,668.80.
+Uses joins across customers, orders and products to calculate revenue by city and product category.
 
-#### Pandas analysis
+The total completed revenue is INR 2,998,668.80.
 
-The analysis also uses `pivot_table` with margins, named aggregation, descriptive statistics, outlier detection and correlation analysis.
+The highest city-category revenue is Bengaluru Electronics at INR 233,909.45.
+
+**Q3 - Products above average catalogue price**
+
+Uses a scalar subquery to identify products priced above the average catalogue price.
+
+Result: 11 products.
+
+**Q4 - Customers without completed orders**
+
+Uses a LEFT JOIN to identify customers who have not placed a completed order.
+
+Result: 25 customers.
+
+**Q5 - Customers spending above average**
+
+Uses a Common Table Expression (CTE) to calculate customer spending and the average customer spending.
+
+Average completed customer spend is approximately INR 2,552.06.
+
+Result: 550 customers above average.
+
+**Q6 - Customer spending rankings**
+
+Uses the window functions `RANK()`, `DENSE_RANK()` and `ROW_NUMBER()` to rank customers within each city.
+
+There are eight rows where `RANK()` differs from `ROW_NUMBER()` because of tied spending values.
+
+**Q7 - Daily revenue and running total**
+
+Uses aggregation and the window function `SUM() OVER (ORDER BY day)` to calculate daily completed revenue and cumulative revenue.
+
+The query produces 183 days, with a final cumulative revenue of INR 2,998,668.80.
+
+### 3.8 Pandas Analysis
+
+The analysis also uses:
+
+- `pivot_table` with margins.
+- Grouping and named aggregation.
+- Descriptive statistics.
+- Outlier detection using the IQR method.
+- Correlation analysis.
+
+**Revenue cross-checks**
 
 - The Q2 pivot-table grand total matches INR 2,998,668.80.
-- Bengaluru completed revenue is INR 5,23,643.40 across 1,894 orders.
-- Mumbai completed revenue is INR 4,79,058.50 across 1,613 orders.
-- Completed order amount mean: INR 269.91.
-- Median: INR 135.00.
-- Skewness: approximately 4.61.
-- First quartile: INR 64.80.
-- Third quartile: INR 297.00.
-- Upper IQR fence: INR 645.30.
-- Upper outliers: 897; lower outliers: 0.
+- Bengaluru completed revenue is INR 523,643.40 across 1,894 orders.
+- Mumbai completed revenue is INR 479,058.50 across 1,613 orders.
 
-The largest absolute correlation is between order amount and discount percentage (approximately -0.095). The correlation between order amount and quantity is approximately +0.087. Both relationships are weak, and correlation does not establish causation.
+**Completed order amount statistics**
 
-#### Exploratory Data Analysis questions
+| Statistic | Result |
+|---|---:|
+| Mean | INR 269.91 |
+| Median | INR 135.00 |
+| Skewness | Approximately 4.61 |
+| First quartile | INR 64.80 |
+| Third quartile | INR 297.00 |
+| Upper IQR fence | INR 645.30 |
+| Upper outliers | 897 |
+| Lower outliers | 0 |
 
-1. **What is this data about?**  
-   The dataset contains synthetic Swiggy Instamart customer, product and order information across six Indian cities. The analysis focuses on completed orders, amounts, quantities, discounts and delivery times.
+The largest absolute correlation is between order amount and discount percentage (approximately -0.095).
 
-2. **What do its distributions and statistics look like?**  
-   Completed order amounts have a mean of INR 269.91 and median of INR 135.00, with positive skewness of approximately 4.61. Q1 is INR 64.80 and Q3 is INR 297.00, indicating that most orders have relatively low values.
+The correlation between order amount and quantity is approximately +0.087.
 
-3. **Are there outliers or anomalies?**  
-   The 1.5 x IQR lower fence is INR -283.50 and the upper fence is INR 645.30. There are no lower outliers and 897 upper outliers. These high-value orders may represent unusually large purchases.
+Both relationships are weak, and correlation does not establish causation.
 
-4. **What relationships exist between variables?**  
-   The largest absolute correlation is between order amount and discount percentage (approximately -0.095). Order amount and quantity have a correlation of approximately +0.087. Both relationships are weak; correlation of this size does not establish causation.
+### 3.9 Exploratory Data Analysis Questions
 
-### Part A validation
+**1. What is this data about?**
+
+The dataset contains synthetic Swiggy Instamart customer, product and order information across six Indian cities. The analysis focuses on completed orders, amounts, quantities, discounts and delivery times.
+
+**2. What do its distributions and statistics look like?**
+
+Completed order amounts have a mean of INR 269.91 and median of INR 135.00, with positive skewness of approximately 4.61. Q1 is INR 64.80 and Q3 is INR 297.00, indicating that most orders have relatively low values.
+
+**3. Are there outliers or anomalies?**
+
+The 1.5 x IQR lower fence is INR -283.50 and the upper fence is INR 645.30. There are no lower outliers and 897 upper outliers. These high-value orders may represent unusually large purchases.
+
+**4. What relationships exist between variables?**
+
+The largest absolute correlation is between order amount and discount percentage (approximately -0.095). Order amount and quantity have a correlation of approximately +0.087. Both relationships are weak; correlation of this size does not establish causation.
+
+### 3.10 Part A Validation
 
 The script `src/validate_part_a.py` checks the cleaned datasets, database tables, row counts, data integrity and expected analytical results.
+
+Run:
+
+```bash
+python src/validate_part_a.py
+```
 
 Successful execution prints:
 
@@ -223,8 +400,9 @@ Successful execution prints:
 ALL CHECKPOINTS PASSED
 ```
 
+Part A is implemented and validated.
 
-## 4. Part B — Customer Segments and Lapse Prediction
+## 4. Part B - Customer Segments and Lapse Prediction
 
 ### 4.1 Objective
 
@@ -394,6 +572,8 @@ A `ColumnTransformer` and scikit-learn `Pipeline` are used for preprocessing and
 - Categorical features are encoded using `OneHotEncoder(drop="first", handle_unknown="ignore")`.
 - Preprocessing is fitted only on training data through the model pipelines.
 - Grid search and cross-validation use the training data only.
+
+The training-only scaler frequency mean is 8.1147, compared with the full-cohort frequency mean of 8.0285. This difference is expected because the scaler is fitted on the training subset rather than the entire cohort.
 
 **Logistic Regression**
 
@@ -579,15 +759,9 @@ The list provides an illustrative shortlist for retention teams. The `actually_l
 | `outputs/lapse_feature_importance.csv` | Random Forest feature importance |
 | `outputs/retention_list.csv` | Premium customer retention shortlist |
 
-### 4.15 Validation
+### 4.15 Part B Validation
 
-Run the following command to validate Part B:
-
-```powershell
-python src/validate_part_b.py
-```
-
-The validation script checks:
+The script `src/validate_part_b.py` checks:
 
 - Required Part B output files exist.
 - Customer segment records and Premium segment identification are valid.
@@ -598,6 +772,12 @@ The validation script checks:
 - The retention list contains valid Premium customers from the lapse cohort.
 - Retention probabilities and actual lapse labels are valid.
 
+Run:
+
+```bash
+python src/validate_part_b.py
+```
+
 The completed validation run prints:
 
 ```text
@@ -606,13 +786,13 @@ ALL PART B CHECKPOINTS PASSED
 
 Part B is implemented and validated.
 
-## 5. Part C
+## 5. Part C - Support Ticket Triage with Guardrails
 
 **Status: Pending implementation.**
 
 This section will document support-ticket preprocessing, privacy redaction, zero-shot and few-shot classification, retry handling, token-budget controls and ticket routing after Part C is implemented and verified.
 
-## 6. Part D
+## 6. Part D - Policy RAG Assistant and Refund Agent
 
 **Status: Pending implementation.**
 
@@ -623,5 +803,7 @@ This section will document policy-document chunking, TF-IDF retrieval, RAG evalu
 - The datasets are synthetic and do not represent actual Swiggy customer or transaction records.
 - Part A establishes the cleaned data foundation and analytical database for the later project components.
 - Correlation analysis identifies statistical relationships but does not establish causal effects.
-- Parts B, C and D will be documented after their implementations and evaluation results have been verified.
-
+- The lapse model uses historical synthetic customer behaviour and may not generalize to real customer behaviour.
+- The Premium retention shortlist uses a whole-window RFM segment flag that includes September 2025. It is illustrative and is not a leakage-free historical evaluation. The lapse prediction model itself uses only pre-cutoff features.
+- Model performance is evaluated on the generated synthetic dataset and should not be interpreted as real-world business performance.
+- Parts A and B have been implemented and validated. Parts C and D remain to be implemented and evaluated.
