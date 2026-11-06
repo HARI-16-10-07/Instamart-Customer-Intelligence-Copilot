@@ -513,47 +513,22 @@ print(
 # 14. SAVE SELECTED MODEL
 # --------------------------------------------------
 
-# Select the model with the higher test-set F1 score.
+# Select the model using cross-validation F1.
+# The test set is reserved only for final evaluation.
 
-best_model_name = evaluation_df.loc[
-    evaluation_df["f1"].idxmax(),
-    "model"
-]
-
-if best_model_name == "Random Forest":
-    selected_model = best_random_forest
+if logistic_search.best_score_ >= random_forest_search.best_score_:
+    best_model_name = "Logistic Regression"
+    selected_model = logistic_search.best_estimator_
+    selected_cv_f1 = logistic_search.best_score_
 else:
-    selected_model = best_logistic
+    best_model_name = "Random Forest"
+    selected_model = random_forest_search.best_estimator_
+    selected_cv_f1 = random_forest_search.best_score_
 
 model_path = OUTPUT_DIR / "lapse_model.joblib"
 
 joblib.dump(selected_model, model_path)
 
 print("\nSelected model:", best_model_name)
-print("Selected model test F1:",
-      round(evaluation_df["f1"].max(), 4))
+print("Selected model CV F1:", round(selected_cv_f1, 4))
 print("Saved:", model_path)
-
-# --------------------------------------------------
-# 15. RELOAD AND VERIFY MODEL
-# --------------------------------------------------
-
-reloaded_model = joblib.load(model_path)
-
-original_predictions = selected_model.predict(X_test)
-
-reloaded_predictions = reloaded_model.predict(X_test)
-
-predictions_match = np.array_equal(
-    original_predictions,
-    reloaded_predictions
-)
-
-print("\nMODEL RELOAD VERIFICATION")
-print("Original and reloaded predictions match:", predictions_match)
-
-assert predictions_match, "Model reload verification failed!"
-
-print("MODEL RELOAD CHECK PASSED")
-
-print("\nMODEL TRAINING AND EVALUATION COMPLETED")

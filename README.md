@@ -352,6 +352,20 @@ The final model uses **K = 4**, giving four interpretable customer segments.
 Inertia decreases as the number of clusters increases because more clusters allow observations to be closer to their assigned centroids. However, a lower inertia alone does not establish the best number of clusters. The elbow pattern, silhouette score and business interpretability must also be considered.
 
 Cluster numbers are labels only and do not indicate customer value or importance.
+-----
+Selected number of clusters: K = 4
+
+K=4 was selected because it achieved the highest silhouette score (0.5255) among the tested values of K from 2 to 8. The silhouette score measures how well-separated the clusters are. Although inertia decreases as K increases, K=4 provides the strongest clustering separation among the tested configurations.
+
+The final K-Means model uses:
+
+n_clusters=4
+
+n_init=10
+
+random_state=42
+
+Cluster IDs are arbitrary labels and do not represent customer value or ranking. The clusters are assigned descriptive names based on their RFM profiles.
 
 ### 4.4 Customer segment profiles
 
@@ -474,6 +488,7 @@ RandomForestClassifier(
 The hyperparameter grid is:
 
 ```python
+n_estimators = [100]
 max_depth = [3, 5, 8]
 min_samples_leaf = [5, 10, 20]
 ```
@@ -490,7 +505,10 @@ The selected Random Forest configuration uses:
 - `min_samples_leaf=10`
 
 Its best cross-validation F1 is approximately 0.6811.
-
+The final model was selected by comparing the cross-validation F1 scores
+of the Logistic Regression and Random Forest models. Random Forest was
+selected because it achieved the higher cross-validation F1 score.
+The test set was not used for model selection.
 ### 4.8 Model evaluation
 
 The tuned models are evaluated on the untouched test set.
