@@ -56,11 +56,12 @@ print("Orders loaded:", len(orders))
 # 3. IDENTIFY THE HISTORICAL COHORT
 # --------------------------------------------------
 
-# Only orders before 1 September 2025 are used
-# to identify eligible customers.
+# Only completed and cancelled orders before
+# 1 September 2025 are considered.
 
 pre_cutoff_orders = orders[
-    orders["order_ts"] < CUTOFF_DATE
+    (orders["order_ts"] < CUTOFF_DATE)
+    & (orders["status"].isin(["completed", "cancelled"]))
 ].copy()
 
 # A customer belongs to the cohort if they had
@@ -93,6 +94,9 @@ active_in_september = set(
     september_orders["customer_id"].unique()
 )
 
+# Lapsed = 1 if the customer had no completed
+# order during September 2025.
+
 cohort["lapsed"] = (
     ~cohort["customer_id"].isin(active_in_september)
 ).astype(int)
@@ -102,9 +106,7 @@ cohort["lapsed"] = (
 # 5. CALCULATE PRE-CUTOFF ORDER FEATURES
 # --------------------------------------------------
 
-# All final-status orders before the cutoff.
-# The cleaned database should contain completed
-# and cancelled orders, with pending orders removed.
+# Separate completed and cancelled orders.
 
 completed_orders = pre_cutoff_orders[
     pre_cutoff_orders["status"] == "completed"
@@ -114,6 +116,7 @@ cancelled_orders = pre_cutoff_orders[
     pre_cutoff_orders["status"] == "cancelled"
 ].copy()
 
+
 # Merge product category into completed orders.
 
 completed_orders = completed_orders.merge(
@@ -122,7 +125,8 @@ completed_orders = completed_orders.merge(
     how="left"
 )
 
-# Recency, frequency and monetary values.
+
+# RFM FEATURES
 
 rfm_features = completed_orders.groupby(
     "customer_id"
@@ -132,19 +136,28 @@ rfm_features = completed_orders.groupby(
     monetary=("order_amount", "sum")
 ).reset_index()
 
+# Recency = cutoff date - last completed order date.
+
 rfm_features["recency"] = (
-    CUTOFF_DATE - rfm_features["last_completed_order"].dt.normalize()
+    CUTOFF_DATE - rfm_features["last_completed_order"]
 ).dt.days
 
-# Average discount across all pre-cutoff final-status orders.
 
-discount_features = pre_cutoff_orders.groupby(
+# AVERAGE DISCOUNT
+
+# Calculate average discount using completed orders only.
+
+discount_features = completed_orders.groupby(
     "customer_id"
 ).agg(
     avg_discount=("discount_pct", "mean")
 ).reset_index()
 
-# Cancellation rate = cancelled orders / all final-status orders.
+
+# CANCELLATION RATE
+
+# Denominator = all final-status orders:
+# completed + cancelled.
 
 order_counts = pre_cutoff_orders.groupby(
     "customer_id"
@@ -173,7 +186,10 @@ cancellation_features["cancellation_rate"] = (
     / cancellation_features["total_orders"]
 )
 
-# Average delivery time using completed pre-cutoff orders.
+
+# AVERAGE DELIVERY TIME
+
+# Only completed pre-cutoff orders are used.
 
 delivery_features = completed_orders.groupby(
     "customer_id"
@@ -181,8 +197,11 @@ delivery_features = completed_orders.groupby(
     avg_delivery=("delivery_minutes", "mean")
 ).reset_index()
 
-# Favorite category = category with the highest
-# number of completed orders before the cutoff.
+
+# FAVORITE CATEGORY
+
+# Category with the highest number of completed orders.
+# Alphabetical order resolves ties.
 
 category_counts = (
     completed_orders.groupby(
@@ -228,8 +247,7 @@ for feature_table in feature_tables:
         how="left"
     )
 
-# Tenure is calculated at the historical cutoff,
-# not at the current date.
+# Tenure is calculated at the historical cutoff.
 
 dataset["tenure_days"] = (
     CUTOFF_DATE - dataset["signup_date"]
@@ -258,7 +276,11 @@ feature_columns = [
 
 print("\nMISSING VALUES IN FEATURES:")
 print(dataset[feature_columns].isnull().sum())
+assert dataset[feature_columns].isnull().sum().sum() == 0, (
+    "Missing values detected in lapse features!"
+)
 
+print("PASS: No missing values in feature columns.")
 print("\nLAPSE CLASS DISTRIBUTION:")
 print(dataset["lapsed"].value_counts().sort_index())
 

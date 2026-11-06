@@ -1,4 +1,4 @@
-### Part A — Exploratory Data Analysis
+﻿### Part A — Exploratory Data Analysis
 
 **1. What is this data about?**
 
@@ -10,7 +10,7 @@ Completed order amounts have a mean of INR 269.91 and median of INR 135.00, with
 
 **3. Are there outliers or anomalies?**
 
-The 1.5×IQR lower fence is INR -283.50 and the upper fence is INR 645.30. There are no lower outliers and 897 upper outliers. These high-value orders may represent unusually large purchases.
+The 1.5 x IQR lower fence is INR -283.50 and the upper fence is INR 645.30. There are no lower outliers and 897 upper outliers. These high-value orders may represent unusually large purchases.
 
 **4. What relationships exist between variables?**
 

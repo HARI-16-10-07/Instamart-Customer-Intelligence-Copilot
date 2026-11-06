@@ -400,7 +400,19 @@ print(
     )
 )
 print("Oversampled recall:", round(oversampled_recall, 4))
+oversampled_accuracy = accuracy_score(
+    y_test,
+    oversampled_predictions
+)
 
+oversampled_matrix = confusion_matrix(
+    y_test,
+    oversampled_predictions,
+    labels=[0, 1]
+)
+print("Accuracy:", round(oversampled_accuracy, 4))
+print("Confusion matrix:")
+print(oversampled_matrix)
 
 # --------------------------------------------------
 # 12. RANDOM FOREST FEATURE IMPORTANCE
@@ -476,18 +488,26 @@ print(
 # 14. SAVE SELECTED MODEL
 # --------------------------------------------------
 
-# Random Forest is selected because its test F1
-# is higher than Logistic Regression.
+# Select the model with the higher test-set F1 score.
 
-selected_model = best_random_forest
+best_model_name = evaluation_df.loc[
+    evaluation_df["f1"].idxmax(),
+    "model"
+]
+
+if best_model_name == "Random Forest":
+    selected_model = best_random_forest
+else:
+    selected_model = best_logistic
 
 model_path = OUTPUT_DIR / "lapse_model.joblib"
 
 joblib.dump(selected_model, model_path)
 
-print("\nSelected model: Random Forest")
+print("\nSelected model:", best_model_name)
+print("Selected model test F1:",
+      round(evaluation_df["f1"].max(), 4))
 print("Saved:", model_path)
-
 
 # --------------------------------------------------
 # 15. RELOAD AND VERIFY MODEL

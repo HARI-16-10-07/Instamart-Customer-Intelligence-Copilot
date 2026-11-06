@@ -1,4 +1,4 @@
-# Customer Intelligence & Support Copilot
+﻿# Customer Intelligence & Support Copilot
 
 ## 1. Overview
 
@@ -6,10 +6,10 @@ This project develops a Customer Intelligence and Support Copilot for Swiggy Ins
 
 The project is organized into four connected parts:
 
-- **Part A – Data Foundation:** Audit, clean and standardize raw data, store trusted data in SQLite, and perform SQL and Pandas analysis.
-- **Part B – Customer Segments and Lapse Prediction:** Apply RFM analysis, customer segmentation and machine-learning-based lapse prediction.
-- **Part C – Support Ticket Triage with Guardrails:** Process support tickets, protect personal information, classify issues and route tickets.
-- **Part D – Policy RAG Assistant and Refund Agent:** Retrieve company policy information and implement a tool-using refund agent with safety checks.
+- **Part A - Data Foundation:** Audit, clean and standardize raw data, store trusted data in SQLite, and perform SQL and Pandas analysis.
+- **Part B - Customer Segments and Lapse Prediction:** Apply RFM analysis, customer segmentation and machine-learning-based lapse prediction.
+- **Part C - Support Ticket Triage with Guardrails:** Process support tickets, protect personal information, classify issues and route tickets.
+- **Part D - Policy RAG Assistant and Refund Agent:** Retrieve company policy information and implement a tool-using refund agent with safety checks.
 
 All monetary values in this project are represented in Indian Rupees (INR). The data is synthetic and is intended for academic demonstration.
 
@@ -17,7 +17,7 @@ All monetary values in this project are represented in Indian Rupees (INR). The 
 
 ### Prerequisites
 
--Python 3.12.3 (the version used to test this project).
+- Python 3.12.3 (the version used to test this project).
 - Git.
 - Windows PowerShell or a compatible terminal.
  
@@ -51,7 +51,7 @@ python generate_data.py
 
 This generates the raw CSV files and policy documents used by the project.
 
-### Part A – Current reproduction commands
+### Part A - Current reproduction commands
 
 Run the following commands in order:
 
@@ -105,7 +105,7 @@ The customer dataset retains 1,200 rows.
 
 City names are stripped of surrounding whitespace and standardized using title case. Gender spellings are mapped to `male`, `female` or `unknown`. Blank gender values become `unknown`.
 
-Ages outside the valid range of 10–100 are treated as missing. Missing ages are filled using the median age of the corresponding city, calculated using `groupby` and `transform`. Signup dates are converted to datetime values.
+Ages outside the valid range of 10-100 are treated as missing. Missing ages are filled using the median age of the corresponding city, calculated using `groupby` and `transform`. Signup dates are converted to datetime values.
 
 Final city counts:
 
@@ -118,7 +118,7 @@ Final city counts:
 | Hyderabad | 191 |
 | Mumbai | 184 |
 
-Final gender counts are 610 female, 560 male and 30 unknown. No missing ages remain, and the cleaned age range is 18–60.
+Final gender counts are 610 female, 560 male and 30 unknown. No missing ages remain, and the cleaned age range is 18-60.
 
 #### Product data cleaning
 
@@ -148,7 +148,7 @@ The cleaned orders dataset contains 12,309 unique order IDs.
 
 Final checks confirm zero missing order amounts, zero missing delivery times among completed orders and 1,199 missing delivery times among cancelled orders.
 
-Completed order revenue is **INR 29,98,668.80**.
+Completed order revenue is **INR 2,998,668.80**.
 
 #### SQLite database
 
@@ -174,19 +174,19 @@ Seven SQL queries are stored in `sql/queries.sql` and executed through Pandas us
 | Q6 | Customer spending rankings within each city | 1,175 customers |
 | Q7 | Daily revenue and cumulative running total | 183 days |
 
-Q2 produces total completed revenue of INR 29,98,668.80. The highest city-category revenue is Bengaluru Electronics at INR 2,33,909.45.
+Q2 produces total completed revenue of INR 2,998,668.80. The highest city-category revenue is Bengaluru Electronics at INR 2,33,909.45.
 
 Q5 calculates average completed customer spend of approximately INR 2,552.06.
 
 Q6 demonstrates `RANK()`, `DENSE_RANK()` and `ROW_NUMBER()` window functions. There are eight rows where `RANK()` differs from `ROW_NUMBER()` because of tied spending values.
 
-Q7 produces a final cumulative revenue of INR 29,98,668.80.
+Q7 produces a final cumulative revenue of INR 2,998,668.80.
 
 #### Pandas analysis
 
 The analysis also uses `pivot_table` with margins, named aggregation, descriptive statistics, outlier detection and correlation analysis.
 
-- The Q2 pivot-table grand total matches INR 29,98,668.80.
+- The Q2 pivot-table grand total matches INR 2,998,668.80.
 - Bengaluru completed revenue is INR 5,23,643.40 across 1,894 orders.
 - Mumbai completed revenue is INR 4,79,058.50 across 1,613 orders.
 - Completed order amount mean: INR 269.91.
@@ -208,7 +208,7 @@ The largest absolute correlation is between order amount and discount percentage
    Completed order amounts have a mean of INR 269.91 and median of INR 135.00, with positive skewness of approximately 4.61. Q1 is INR 64.80 and Q3 is INR 297.00, indicating that most orders have relatively low values.
 
 3. **Are there outliers or anomalies?**  
-   The 1.5 × IQR lower fence is INR -283.50 and the upper fence is INR 645.30. There are no lower outliers and 897 upper outliers. These high-value orders may represent unusually large purchases.
+   The 1.5 x IQR lower fence is INR -283.50 and the upper fence is INR 645.30. There are no lower outliers and 897 upper outliers. These high-value orders may represent unusually large purchases.
 
 4. **What relationships exist between variables?**  
    The largest absolute correlation is between order amount and discount percentage (approximately -0.095). Order amount and quantity have a correlation of approximately +0.087. Both relationships are weak; correlation of this size does not establish causation.
@@ -247,3 +247,4 @@ This section will document policy-document chunking, TF-IDF retrieval, RAG evalu
 - Part A establishes the cleaned data foundation and analytical database for the later project components.
 - Correlation analysis identifies statistical relationships but does not establish causal effects.
 - Parts B, C and D will be documented after their implementations and evaluation results have been verified.
+

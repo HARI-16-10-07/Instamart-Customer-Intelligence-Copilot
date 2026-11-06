@@ -40,7 +40,7 @@ GROUP BY c.city, p.category
 ORDER BY c.city, p.category;
 
 
--
+
 -- Find products priced above the average catalogue price.
 
 SELECT
@@ -129,23 +129,22 @@ SELECT
 
     ROW_NUMBER() OVER (
         PARTITION BY city
-        ORDER BY total_spend_inr DESC, customer_id
+        ORDER BY total_spend_inr DESC
     ) AS row_number_rank
 
 FROM customer_city_spending
 ORDER BY city, spending_rank, customer_id;
 
 
-
 -- Calculate daily completed revenue and cumulative revenue.
 
 WITH daily_revenue AS (
     SELECT
-        DATE(order_ts) AS order_date,
+        SUBSTR(order_ts, 1, 10) AS order_date,
         ROUND(SUM(order_amount), 2) AS daily_revenue_inr
     FROM orders
     WHERE status = 'completed'
-    GROUP BY DATE(order_ts)
+    GROUP BY SUBSTR(order_ts, 1, 10)
 )
 SELECT
     order_date,

@@ -20,7 +20,9 @@ OUTPUT_DIR = PROJECT_ROOT / "outputs"
 
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-SNAPSHOT_DATE = pd.Timestamp("2025-10-01")
+# Exact snapshot moment specified by the instructor
+SNAPSHOT_DATE = pd.Timestamp("2025-10-01 00:00:00")
+
 SELECTED_K = 4
 
 
@@ -51,13 +53,17 @@ print("Completed orders loaded:", len(orders))
 # --------------------------------------------------
 
 rfm = orders.groupby("customer_id").agg(
-    last_order_date=("order_ts", "max"),
+    last_order_ts=("order_ts", "max"),
     frequency=("order_id", "nunique"),
     monetary=("order_amount", "sum")
 ).reset_index()
 
+# IMPORTANT:
+# Use the actual timestamp, without normalizing it.
+# This follows the instructor's exact recency formula.
+
 rfm["recency"] = (
-    SNAPSHOT_DATE - rfm["last_order_date"].dt.normalize()
+    SNAPSHOT_DATE - rfm["last_order_ts"]
 ).dt.days
 
 rfm = rfm[
@@ -65,6 +71,7 @@ rfm = rfm[
 ].copy()
 
 print("\nRFM CUSTOMER COUNT:", len(rfm))
+
 print("\nRFM SUMMARY:")
 print(rfm[["recency", "frequency", "monetary"]].describe())
 
@@ -78,6 +85,7 @@ rfm_features = rfm[
 ]
 
 scaler = StandardScaler()
+
 scaled_features = scaler.fit_transform(rfm_features)
 
 
@@ -101,6 +109,7 @@ for k in range(2, 9):
     cluster_labels = model.fit_predict(scaled_features)
 
     inertia = model.inertia_
+
     silhouette = silhouette_score(
         scaled_features,
         cluster_labels
@@ -140,7 +149,7 @@ rfm["segment_id"] = final_model.fit_predict(scaled_features)
 
 
 # --------------------------------------------------
-# 7. INTERPRET THE FOUR SEGMENTS
+# 7. PROFILE AND NAME THE FOUR SEGMENTS
 # --------------------------------------------------
 
 segment_profile = rfm.groupby("segment_id").agg(
@@ -150,12 +159,16 @@ segment_profile = rfm.groupby("segment_id").agg(
     avg_monetary=("monetary", "mean")
 )
 
-# Identify the clusters using their business characteristics.
+# Cluster numbers are arbitrary labels.
+# They do not indicate customer value or ranking.
+
 remaining_segments = set(segment_profile.index)
 
+# Highest monetary value = Premium
 premium_segment = segment_profile["avg_monetary"].idxmax()
 remaining_segments.remove(premium_segment)
 
+# Highest frequency among remaining clusters = Loyal
 loyal_segment = max(
     remaining_segments,
     key=lambda segment: segment_profile.loc[
@@ -164,6 +177,7 @@ loyal_segment = max(
 )
 remaining_segments.remove(loyal_segment)
 
+# Highest recency among remaining clusters = At Risk
 at_risk_segment = max(
     remaining_segments,
     key=lambda segment: segment_profile.loc[
@@ -172,6 +186,7 @@ at_risk_segment = max(
 )
 remaining_segments.remove(at_risk_segment)
 
+# Remaining cluster = Regular
 regular_segment = remaining_segments.pop()
 
 segment_names = {
@@ -181,26 +196,44 @@ segment_names = {
     regular_segment: "Regular"
 }
 
+segment_actions = {
+    "Premium": "Offer exclusive rewards and early access to promotions.",
+    "Loyal": "Encourage repeat purchases through loyalty rewards.",
+    "At Risk": "Send personalized re-engagement offers to encourage ordering.",
+    "Regular": "Use targeted recommendations to increase purchase frequency."
+}
+
 rfm["segment_name"] = rfm["segment_id"].map(segment_names)
 
 rfm["is_premium"] = (
     rfm["segment_id"] == premium_segment
 ).astype(int)
 
+segment_profile["segment_name"] = (
+    segment_profile.index.map(segment_names)
+)
+
+segment_profile["recommended_action"] = (
+    segment_profile["segment_name"].map(segment_actions)
+)
+
 
 # --------------------------------------------------
-# 8. PCA EXPLAINED VARIANCE
+# 8. PCA WITH EXACTLY TWO COMPONENTS
 # --------------------------------------------------
 
-pca = PCA(n_components=3)
+pca = PCA(n_components=2)
+
 pca.fit(scaled_features)
 
-print("\nPCA EXPLAINED VARIANCE:")
-print(np.round(pca.explained_variance_ratio_, 3))
+explained_variance = pca.explained_variance_ratio_
 
+print("\nPCA EXPLAINED VARIANCE:")
+print("PC1:", round(explained_variance[0], 3))
+print("PC2:", round(explained_variance[1], 3))
 print(
-    "First two components combined:",
-    round(pca.explained_variance_ratio_[:2].sum(), 3)
+    "Combined explained variance:",
+    round(explained_variance.sum(), 3)
 )
 
 
@@ -229,15 +262,29 @@ rfm[output_columns].to_csv(
 # --------------------------------------------------
 
 print("\nSEGMENT PROFILES")
-print(segment_profile)
+print(
+    segment_profile[
+        [
+            "segment_name",
+            "customer_count",
+            "avg_recency",
+            "avg_frequency",
+            "avg_monetary"
+        ]
+    ].round(2).to_string()
+)
+
+print("\nRECOMMENDED BUSINESS ACTIONS")
+
+for segment_name, action in segment_actions.items():
+    print(f"{segment_name}: {action}")
 
 print("\nSEGMENT NAMES")
 print(segment_names)
 
-print("\nCUSTOMERS PER SEGMENT")
-print(rfm["segment_name"].value_counts())
-
 print("\nPREMIUM CUSTOMER COUNT:", rfm["is_premium"].sum())
+
+print("\nCluster IDs are arbitrary labels and have no inherent ordering.")
 
 print("\nSaved:")
 print("outputs/customer_segments.csv")
