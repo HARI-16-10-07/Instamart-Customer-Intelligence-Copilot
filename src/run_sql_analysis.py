@@ -19,18 +19,21 @@ CLEAN_DIR = BASE_DIR / "data" / "clean"
 
 sql_text = SQL_PATH.read_text(encoding="utf-8")
 
-statements = []
+# Remove SQL comments and separator lines
+import re
 
-for raw_statement in sql_text.split(";"):
-    cleaned_lines = [
-        line for line in raw_statement.splitlines()
-        if not line.strip().startswith("--")
-    ]
+sql_text = re.sub(r"(?m)^\s*--.*$", "", sql_text)
+sql_text = re.sub(r"(?m)^\s*-+\s*$", "", sql_text)
+# Separate the seven SQL statements
+statements = [
+    statement.strip()
+    for statement in sql_text.split(";")
+    if statement.strip()
+]
 
-    statement = "\n".join(cleaned_lines).strip()
-
-    if statement:
-        statements.append(statement)
+assert len(statements) == 7, (
+    f"Expected 7 SQL queries, but found {len(statements)}."
+)
 
 assert len(statements) == 7, (
     f"Expected 7 SQL queries, but found {len(statements)}."
@@ -91,12 +94,30 @@ assert len(query_results[5]) == 550
 print("Q5: 550 customers are above average spend.")
 
 q6 = query_results[6]
-print("Q6: City-wise customer ranking query executed.")
-print("Q6 columns:", list(q6.columns))
+
+expected_top_customers = {
+    "Bengaluru": "C0082",
+    "Chennai": "C0930",
+    "Delhi": "C0291",
+    "Hyderabad": "C0743",
+    "Mumbai": "C0693",
+    "Pune": "C0426"
+}
+
+for city, customer_id in expected_top_customers.items():
+    actual = q6[q6["city"] == city].iloc[0]["customer_id"]
+    assert actual == customer_id, f"Q6 top customer mismatch in {city}."
+
+rank_differences = (q6["spending_rank"] != q6["row_number_rank"]).sum()
+assert rank_differences == 8
+
+print("Q6: City-wise rankings and all reference checks passed.")
 
 q7 = query_results[7]
 assert len(q7) == 183
-print("Q7: 183 days of completed-order revenue returned.")
+assert abs(q7.iloc[-1]["cumulative_revenue_inr"] - 2998668.80) < 0.01
+
+print("Q7: 183 days and cumulative revenue verified.")
 
 print("\nAll seven SQL queries executed successfully.")
 
