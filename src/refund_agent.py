@@ -472,7 +472,10 @@ def resume_agent(run_id):
 # 5. RUN ALL SEVEN INSTRUCTOR SCENARIOS
 # --------------------------------------------------
 
+
 def run_all_scenarios():
+
+    import re
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -504,17 +507,61 @@ def run_all_scenarios():
         )
 
         expected_status = scenario["expected_outcome"]
+        expected_refund = round(
+            float(scenario["expected_refund_inr"]), 2
+        )
 
-        # FALLBACK is the expected broad outcome for S7.
+        # Check the expected status.
         if expected_status == "FALLBACK":
-            passed = result["status"].startswith("FALLBACK")
+            status_passed = result["status"].startswith("FALLBACK")
         else:
-            passed = result["status"] == expected_status
+            status_passed = result["status"] == expected_status
+
+        
+        # Extract the actual refund amount from tool observations.
+        actual_refund = None
+
+        for step in result["steps"]:
+            if step["tool_name"] in (
+                "calculate_refund",
+                "issue_refund",
+                "escalate_to_human"
+            ):
+                observation = step.get("observation", {})
+
+                if isinstance(observation, dict) and "refund_inr" in observation:
+                    actual_refund = round(
+                        float(observation["refund_inr"]), 2
+                    )
+
+        # Requests that did not produce a refund must have amount zero.
+        if actual_refund is None and result["status"] in (
+            "DENIED",
+            "NOT_FOUND"
+        ):
+            actual_refund = 0.0
+
+        if actual_refund is None and result["status"].startswith("FALLBACK"):
+            actual_refund = 0.0
+
+        # Allow a maximum difference of INR 0.01.
+        refund_passed = (
+            actual_refund is not None
+            and abs(actual_refund - expected_refund) <= 0.01
+        )
+
+        # Both checks must pass.
+        passed = status_passed and refund_passed
 
         result_record = {
             "scenario_id": scenario_id,
             "status": result["status"],
             "final_answer": result["final_answer"],
+            "expected_refund_inr": expected_refund,
+            "actual_refund_inr": actual_refund,
+            "status_check": "PASS" if status_passed else "CHECK",
+            "refund_check": "PASS" if refund_passed else "CHECK",
+            "result": "PASS" if passed else "CHECK",
             "llm_calls": result["llm_calls"],
             "tokens_used": result["tokens_used"],
             "steps": result["steps"]
@@ -522,7 +569,7 @@ def run_all_scenarios():
 
         results.append(result_record)
 
-        # Append one JSON record per scenario run
+        # Append one JSON record per scenario run.
         with open(
             AGENT_RUNS_FILE,
             "a",
@@ -535,11 +582,20 @@ def run_all_scenarios():
 
         print("Expected status:", expected_status)
         print("Actual status:", result["status"])
+        print("Status check:", "PASS" if status_passed else "CHECK")
+        print(f"Expected refund: INR {expected_refund:.2f}")
+
+        if actual_refund is not None:
+            print(f"Actual refund: INR {actual_refund:.2f}")
+        else:
+            print("Actual refund: Could not determine")
+
+        print("Refund check:", "PASS" if refund_passed else "CHECK")
         print("Final answer:", result["final_answer"])
         print("Model calls:", result["llm_calls"])
         print("Tokens used:", result["tokens_used"])
         print("Tools executed:", len(result["steps"]))
-        print("Result:", "PASS" if passed else "CHECK")
+        print("Overall result:", "PASS" if passed else "CHECK")
 
     return results
 

@@ -168,17 +168,40 @@ def append_refund_ledger(tool_name, order_id, refund_inr):
 
 def issue_refund(order_id, refund_inr):
     """
-    Record an automatically approved refund.
-
-    The operation is simulated by appending a record
-    to outputs/refund_ledger.jsonl.
+    Record an automatically approved refund only when
+    the order satisfies all refund policy conditions.
     """
+
+    # Retrieve the order from the existing database.
+    order = get_order(order_id)
+
+    # Stop if the order does not exist.
+    if "error" in order:
+        return {"error": "Order not found. Refund cannot be issued."}
+
+    # Only completed orders are eligible.
+    if order["status"].lower() != "completed":
+        return {"error": "Refund denied. Order is not completed."}
+
+    # A full refund is allowed only when delivery exceeds 45 minutes.
+    if float(order["delivery_minutes"]) <= 45:
+        return {"error": "Refund denied. Delivery time did not exceed 45 minutes."}
 
     refund_inr = round(float(refund_inr), 2)
 
-    if refund_inr < 0:
-        raise ValueError("Refund amount cannot be negative.")
+    # Reject negative or zero refund amounts.
+    if refund_inr <= 0:
+        return {"error": "Refund amount must be greater than zero."}
 
+    # Do not allow a refund amount greater than the actual order amount.
+    if abs(refund_inr - float(order["order_amount"])) > 0.01:
+        return {"error": "Refund amount does not match the eligible order amount."}
+
+    # Refunds above INR 1000 must be escalated to a human.
+    if refund_inr > 1000:
+        return {"error": "Refund exceeds INR 1000. Human escalation is required."}
+
+    # Record the approved refund.
     append_refund_ledger(
         tool_name="issue_refund",
         order_id=order_id,
@@ -188,7 +211,6 @@ def issue_refund(order_id, refund_inr):
     return {
         "refund_inr": refund_inr
     }
-
 
 # ============================================================
 # 7. TOOL 5 - ESCALATE TO HUMAN
