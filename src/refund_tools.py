@@ -220,15 +220,34 @@ def escalate_to_human(order_id, refund_inr):
     """
     Record a refund requiring human approval.
 
-    The operation is simulated by appending a record
-    to outputs/refund_ledger.jsonl.
+    Only eligible completed orders with a refund
+    above INR 1000 can be escalated.
     """
+
+    # Retrieve the order from the existing database.
+    order = get_order(order_id)
+
+    if "error" in order:
+        return {"error": "Order not found. Escalation cannot proceed."}
+
+    # Only completed orders are eligible.
+    if order["status"].lower() != "completed":
+        return {"error": "Escalation denied. Order is not completed."}
+
+    # Delivery must exceed 45 minutes.
+    if float(order["delivery_minutes"]) <= 45:
+        return {"error": "Escalation denied. Delivery time did not exceed 45 minutes."}
 
     refund_inr = round(float(refund_inr), 2)
 
-    if refund_inr < 0:
-        raise ValueError("Refund amount cannot be negative.")
+    if refund_inr <= 1000:
+        return {"error": "Human escalation is required only for refunds above INR 1000."}
 
+    # Verify that the requested refund matches the actual order amount.
+    if abs(refund_inr - float(order["order_amount"])) > 0.01:
+        return {"error": "Refund amount does not match the eligible order amount."}
+
+    # Record the escalation request.
     append_refund_ledger(
         tool_name="escalate_to_human",
         order_id=order_id,
@@ -236,9 +255,9 @@ def escalate_to_human(order_id, refund_inr):
     )
 
     return {
-        "refund_inr": refund_inr
+        "refund_inr": refund_inr,
+        "status": "PENDING_HUMAN_APPROVAL"
     }
-
 
 # ============================================================
 # 8. TOOL SPECIFICATIONS
