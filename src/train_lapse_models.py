@@ -528,7 +528,21 @@ else:
 model_path = OUTPUT_DIR / "lapse_model.joblib"
 
 joblib.dump(selected_model, model_path)
+# Verify that the saved and reloaded model gives
+# exactly the same predictions on the untouched test set.
 
+original_test_predictions = selected_model.predict(X_test)
+
+reloaded_model = joblib.load(model_path)
+
+reloaded_test_predictions = reloaded_model.predict(X_test)
+
+assert np.array_equal(
+    original_test_predictions,
+    reloaded_test_predictions
+), "Reloaded model predictions do not match!"
+
+print("PASS: Reloaded model reproduces test predictions exactly")
 print("\nSelected model:", best_model_name)
 print("Selected model CV F1:", round(selected_cv_f1, 4))
 print("Saved:", model_path)
