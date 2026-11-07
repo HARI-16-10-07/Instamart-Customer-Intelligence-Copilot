@@ -17,20 +17,20 @@ All monetary values in this project are represented in Indian Rupees (INR). The 
 
 ## 2. Reproduce
 
-### Prerequisites
+### 2.1 Prerequisites
 
 - Python 3.12 or a compatible Python version.
 - Git.
 - Windows PowerShell or a compatible terminal.
 
-### Clone the repository
+### 2.2 Clone the repository
 
 ```bash
 git clone https://github.com/HARI-16-10-07/Instamart-Customer-Intelligence-Copilot.git
 cd Instamart-Customer-Intelligence-Copilot
 ```
 
-### Create and activate a virtual environment
+### 2.3 Create and activate a virtual environment
 
 Windows PowerShell:
 
@@ -39,13 +39,13 @@ python -m venv venv
 .\venv\Scripts\Activate.ps1
 ```
 
-### Install dependencies
+### 2.4 Install dependencies
 
 ```bash
 python -m pip install -r requirements.txt
 ```
 
-### Generate the synthetic data
+### 2.5 Generate the synthetic data
 
 ```bash
 python generate_data.py
@@ -53,7 +53,7 @@ python generate_data.py
 
 This generates the raw CSV files and policy documents used by the project.
 
-### Part A – Data Foundation
+### 2.6 Part A – Data Foundation
 
 Run the following commands in order:
 
@@ -65,19 +65,21 @@ python src/validate_part_a.py
 python src/run_sql_analysis.py
 ```
 
-### Part B – Customer Segments and Lapse Prediction
+### 2.7 Part B – Customer Segments and Lapse Prediction
 
 Run the Part B scripts in the following order:
 
 ```powershell
-python src/build_rfm.py
+python src/build_customer_segments.py
 python src/prepare_lapse_data.py
 python src/train_lapse_models.py
+python src/create_retention_list.py
+python src/validate_part_b.py
 ```
 
-The scripts generate the customer segmentation, lapse prediction and retention outputs.
+These scripts generate the customer segmentation, lapse prediction model, retention list and validation results.
 
-### Part C – Support Ticket Triage
+### 2.8 Part C – Support Ticket Triage
 
 Run:
 
@@ -94,9 +96,11 @@ outputs/triage_budget_demo.csv
 outputs/triage_results.csv
 ```
 
-### Validation
+### 2.9 Validation
 
-The Part A and Part B validation scripts check the respective outputs against their expected checkpoints. Part C also performs assertions for its final results and prints:
+The Part A and Part B validation scripts check the respective outputs against their expected checkpoints.
+
+Part C performs assertions for its final results and prints:
 
 ```text
 ALL FINAL PART C CHECKS PASSED
@@ -268,21 +272,21 @@ The largest absolute correlation is between order amount and discount percentage
 
 ### 3.9 Exploratory Data Analysis questions
 
-1. **What is this data about?**
+**1. What is this data about?**
 
-   The dataset contains synthetic Swiggy Instamart customer, product and order information across six Indian cities. The analysis focuses on completed orders, amounts, quantities, discounts and delivery times.
+The dataset contains synthetic Swiggy Instamart customer, product and order information across six Indian cities. The analysis focuses on completed orders, amounts, quantities, discounts and delivery times.
 
-2. **What do its distributions and statistics look like?**
+**2. What do its distributions and statistics look like?**
 
-   Completed order amounts have a mean of INR 269.91 and median of INR 135.00, with positive skewness of approximately 4.61. Q1 is INR 64.80 and Q3 is INR 297.00, indicating that most orders have relatively low values.
+Completed order amounts have a mean of INR 269.91 and median of INR 135.00, with positive skewness of approximately 4.61. Q1 is INR 64.80 and Q3 is INR 297.00, indicating that most orders have relatively low values.
 
-3. **Are there outliers or anomalies?**
+**3. Are there outliers or anomalies?**
 
-   The 1.5 × IQR lower fence is INR -283.50 and the upper fence is INR 645.30. There are no lower outliers and 897 upper outliers. These high-value orders may represent unusually large purchases.
+The 1.5 × IQR lower fence is INR -283.50 and the upper fence is INR 645.30. There are no lower outliers and 897 upper outliers. These high-value orders may represent unusually large purchases.
 
-4. **What relationships exist between variables?**
+**4. What relationships exist between variables?**
 
-   The largest absolute correlation is between order amount and discount percentage (approximately -0.095). Order amount and quantity have a correlation of approximately +0.087. Both relationships are weak; correlation of this size does not establish causation.
+The largest absolute correlation is between order amount and discount percentage (approximately -0.095). Order amount and quantity have a correlation of approximately +0.087. Both relationships are weak; correlation of this size does not establish causation.
 
 ### 3.10 Part A validation
 
@@ -347,27 +351,47 @@ K-means is evaluated for K values from 2 to 8 using:
 - Inertia
 - Silhouette score
 
-The final model uses **K = 4**, giving four interpretable customer segments.
+The actual model comparison results are:
 
-Inertia decreases as the number of clusters increases because more clusters allow observations to be closer to their assigned centroids. However, a lower inertia alone does not establish the best number of clusters. The elbow pattern, silhouette score and business interpretability must also be considered.
+| K | Inertia | Silhouette Score |
+|---:|---:|---:|
+| 2 | 1820.7606 | 0.4650 |
+| 3 | 1268.2346 | 0.4452 |
+| 4 | 743.0711 | 0.5255 |
+| 5 | 617.3666 | 0.4805 |
+| 6 | 503.1706 | 0.4819 |
+| 7 | 408.4605 | 0.4163 |
+| 8 | 366.5035 | 0.4123 |
 
-Cluster numbers are labels only and do not indicate customer value or importance.
------
-Selected number of clusters: K = 4
+**Selected number of clusters: K = 4**
 
 K=4 was selected because it achieved the highest silhouette score (0.5255) among the tested values of K from 2 to 8. The silhouette score measures how well-separated the clusters are. Although inertia decreases as K increases, K=4 provides the strongest clustering separation among the tested configurations.
 
 The final K-Means model uses:
 
-n_clusters=4
-
-n_init=10
-
-random_state=42
+```python
+KMeans(
+    n_clusters=4,
+    n_init=10,
+    random_state=42
+)
+```
 
 Cluster IDs are arbitrary labels and do not represent customer value or ranking. The clusters are assigned descriptive names based on their RFM profiles.
 
-### 4.4 Customer segment profiles
+### 4.4 PCA explained variance
+
+Principal Component Analysis (PCA) was performed using exactly two components on the standardized RFM features: recency, frequency and monetary.
+
+| Component | Explained Variance Ratio |
+|---|---:|
+| PC1 | 0.634 |
+| PC2 | 0.218 |
+| **Combined** | **0.852** |
+
+The first principal component explains 63.4% of the variance, while the second explains 21.8%. Together, the two components retain **85.2% of the total variance** in the standardized RFM data.
+
+### 4.5 Customer segment profiles
 
 The four segments are named according to their observed RFM characteristics.
 
@@ -388,9 +412,9 @@ Business interpretation and recommended actions:
 | Loyal | Customers with frequent and recent purchases | Encourage continued engagement and loyalty |
 | At Risk | Customers with high recency and low purchase frequency | Use reactivation campaigns and targeted incentives |
 
-The Premium segment is selected based on its highest mean monetary value.
+The Premium segment is selected based on its highest mean monetary value. The `is_premium` flag is set to 1 for customers belonging to this segment and 0 for all other customers.
 
-### 4.5 Lapse prediction problem
+### 4.6 Lapse prediction problem
 
 The lapse prediction task uses the cutoff date `2025-09-01`.
 
@@ -432,7 +456,7 @@ The baseline model always predicts not lapsed:
 - Baseline accuracy: approximately 61.6%.
 - Baseline lapsed-class F1: 0.
 
-### 4.6 Preprocessing and leakage prevention
+### 4.7 Preprocessing and leakage prevention
 
 The preprocessing pipeline includes:
 
@@ -452,11 +476,11 @@ The feature data is checked for missing values before model training.
 
 The learned training-set frequency mean can differ from the full-cohort frequency mean because the scaler is fitted on the training subset rather than the complete cohort.
 
-### 4.7 Model training and hyperparameter tuning
+### 4.8 Model training and hyperparameter tuning
 
 Two classification algorithms are evaluated.
 
-**Logistic Regression**
+#### Logistic Regression
 
 ```python
 LogisticRegression(max_iter=1000)
@@ -476,7 +500,7 @@ Grid search uses:
 
 The selected Logistic Regression configuration uses `C=100`, with a best cross-validation F1 of approximately 0.6506.
 
-**Random Forest**
+#### Random Forest
 
 ```python
 RandomForestClassifier(
@@ -501,21 +525,22 @@ Grid search uses:
 
 The selected Random Forest configuration uses:
 
+- `n_estimators=100`
 - `max_depth=8`
 - `min_samples_leaf=10`
+- `random_state=42`
 
 Its best cross-validation F1 is approximately 0.6811.
-The final model was selected by comparing the cross-validation F1 scores
-of the Logistic Regression and Random Forest models. Random Forest was
-selected because it achieved the higher cross-validation F1 score.
-The test set was not used for model selection.
-### 4.8 Model evaluation
+
+**Final model selection:** The final model was selected by comparing the cross-validation F1 scores of the Logistic Regression and Random Forest models. Random Forest was selected because it achieved the higher cross-validation F1 score (approximately 0.6811 compared with approximately 0.6506 for Logistic Regression). The test set was not used for model selection.
+
+### 4.9 Model evaluation
 
 The tuned models are evaluated on the untouched test set.
 
 The positive class is `lapsed`.
 
-**Logistic Regression**
+#### Logistic Regression
 
 Confusion matrix:
 
@@ -530,7 +555,7 @@ Confusion matrix:
 | Recall | 0.6517 |
 | F1-score | 0.6480 |
 
-**Random Forest**
+#### Random Forest
 
 Confusion matrix:
 
@@ -549,7 +574,7 @@ The Random Forest achieves a slightly higher test F1-score and precision than th
 
 The cost of missing a lapsing customer is potentially losing future purchases and retention opportunities. However, wrongly targeting a loyal customer can waste campaign resources and incentives. The selected model must therefore balance precision and recall rather than relying only on accuracy.
 
-### 4.9 Class-balance experiment
+### 4.10 Class-balance experiment
 
 The lapsed class is the minority class.
 
@@ -580,13 +605,13 @@ Confusion matrix:
 | Precision | 0.6444 | 0.5891 |
 | Recall | 0.6517 | 0.8539 |
 | F1-score | 0.6480 | 0.6972 |
-| Accuracy | — | 0.7155 |
+| Accuracy | 0.7284 | 0.7155 |
 
-Recall increases the most, from approximately 0.6517 to 0.8539. This means the model identifies a larger proportion of customers who are actually lapsing, which is useful for retention campaigns. However, precision decreases, so the retention team may need to contact more customers who would not have lapsed.
+Recall increases from approximately 0.6517 to 0.8539. This means the model identifies a larger proportion of customers who are actually lapsing, which is useful for retention campaigns. However, precision decreases, so the retention team may need to contact more customers who would not have lapsed.
 
 The oversampled model demonstrates the trade-off between identifying more at-risk customers and increasing false-positive targeting.
 
-### 4.10 Feature interpretation
+### 4.11 Feature interpretation
 
 The Random Forest model's five leading features are:
 
@@ -610,7 +635,7 @@ The leading Logistic Regression coefficients include:
 
 A negative coefficient indicates a decrease in the model's predicted log-odds of the lapsed class, holding other features constant.
 
-### 4.11 Model persistence and retention list
+### 4.12 Model persistence and retention list
 
 The selected model is saved using `joblib.dump` to:
 
@@ -622,27 +647,40 @@ The model is reloaded using `joblib.load`, and its predictions are compared with
 
 The reloaded model reproduces the original test predictions exactly.
 
+The retention list is generated using the saved model in `outputs/lapse_model.joblib`.
+
+It is created by:
+
+1. Recreating the same stratified 80:20 train-test split using `random_state=42`.
+2. Identifying Premium customers using the `is_premium` flag from `customer_segments.csv`.
+3. Selecting Premium customers belonging to the test set.
+4. Calculating predicted lapse probabilities using the saved model.
+5. Ranking the selected customers by predicted lapse probability in descending order.
+6. Saving the top 10 customers.
+
 The retention list is saved to:
 
 ```text
 outputs/retention_list.csv
 ```
 
-It contains the top 10 test-set customers in the Premium segment ranked by predicted lapse probability, with the columns:
+It contains the columns:
 
 ```text
 customer_id, lapse_probability, actually_lapsed
 ```
 
-One of the 10 customers in the generated retention list was actually lapsed.
+The regenerated retention list contains 10 Premium customers, with one customer actually lapsed.
 
 **Important limitation:** The Premium flag is based on whole-window RFM information, including the September period used to define the lapse label. Therefore, the retention list is illustrative and is not a leakage-free evaluation, even though the model's own features use only pre-cutoff orders.
 
-### 4.12 Part B outputs
+### 4.13 Part B outputs
 
 | Output | Purpose |
 |---|---|
 | `outputs/customer_segments.csv` | Customer RFM values, segment assignments and Premium flag |
+| `outputs/kmeans_comparison.csv` | Inertia and silhouette comparison for K=2 to K=8 |
+| `outputs/lapse_dataset.csv` | Prepared customer features and lapse labels |
 | `outputs/lapse_model.joblib` | Saved selected lapse prediction model |
 | `outputs/retention_list.csv` | Top Premium-segment customers ranked by predicted lapse probability |
 
@@ -650,6 +688,16 @@ The customer segment output contains:
 
 ```text
 customer_id, recency, frequency, monetary, segment_id, segment_name, is_premium
+```
+
+### 4.14 Part B validation
+
+The script `src/validate_part_b.py` checks the generated files, segment assignments, Premium flag, lapse dataset, saved model, probability predictions and retention list.
+
+Successful execution prints:
+
+```text
+ALL PART B CHECKPOINTS PASSED
 ```
 
 ---
@@ -706,7 +754,7 @@ An assertion in the code checks that no personal information remains before a mo
 
 Two system prompts are implemented.
 
-**Zero-shot prompt**
+#### Zero-shot prompt
 
 The zero-shot prompt instructs the model to classify tickets into exactly four allowed categories:
 
@@ -723,7 +771,7 @@ It requires a JSON-only response in the following structure:
 
 It does not contain the `EXAMPLES:` section.
 
-**Few-shot prompt**
+#### Few-shot prompt
 
 The few-shot prompt contains the same classification instructions and allowed categories. It also includes an `EXAMPLES:` section with labelled examples, including a fraud example.
 
@@ -950,7 +998,22 @@ ALL FINAL PART C CHECKS PASSED
 
 **Status: Pending implementation.**
 
-This section will document policy-document chunking, TF-IDF retrieval, retrieval-grounded question answering, retrieval evaluation, refund-agent tools, ReAct execution, safety limits, resumable agent runs and the comparison between ReAct and plan-and-execute after Part D is implemented and verified.
+This section will document the implementation and evaluation of the Policy RAG Assistant and Refund Agent after the Part D tasks have been completed and verified.
+
+The planned areas to be documented include:
+
+- Policy-document loading and preparation.
+- Text chunking and retrieval.
+- TF-IDF-based policy retrieval.
+- Retrieval-grounded question answering.
+- Retrieval evaluation.
+- Refund-agent tools and execution.
+- ReAct agent workflow.
+- Safety checks and refund limits.
+- Human escalation and resumable agent runs.
+- ReAct and plan-and-execute comparison.
+
+No Part D results or implementation claims are reported until they have been implemented and tested.
 
 ---
 
@@ -964,3 +1027,4 @@ This section will document policy-document chunking, TF-IDF retrieval, retrieval
 - Part C uses the supplied deterministic offline `mock_llm.py` implementation. Its classification results demonstrate the pipeline's guardrails, retry handling, validation and routing logic rather than the performance of a production language model.
 - Part D remains to be implemented and evaluated.
 
+The next development step is to complete Part D, integrate its policy retrieval and refund-agent functionality with the existing data foundation, and validate the complete four-part project.
