@@ -1,25 +1,29 @@
 ﻿# Customer Intelligence & Support Copilot
 
-## 1. Overview
+## 1. Project Overview
 
-This project develops a Customer Intelligence and Support Copilot for Swiggy Instamart using synthetic customer, product, order and support-ticket data.
+This project develops a **Customer Intelligence & Support Copilot** for Swiggy Instamart using synthetic customer, product, order and support-ticket data.
 
 The project is organized into four connected parts:
 
-- **Part A – Data Foundation:** Audit, clean and standardize raw data, store trusted data in SQLite, and perform SQL and Pandas analysis.
-- **Part B – Customer Segments and Lapse Prediction:** Apply RFM analysis, customer segmentation and machine-learning-based lapse prediction.
-- **Part C – Support Ticket Triage with Guardrails:** Process support tickets, protect personal information, classify issues and route tickets.
-- **Part D – Policy RAG Assistant and Refund Agent:** Retrieve company policy information and implement a tool-using refund agent with safety checks.
+- **Part A – Data Foundation:** Audit and clean raw datasets, standardize inconsistent values, create a trusted SQLite database, and perform SQL and Pandas analysis.
+- **Part B – Customer Segments and Lapse Prediction:** Apply RFM analysis, K-Means customer segmentation, and machine-learning models to predict customer lapse.
+- **Part C – Support Ticket Triage with Guardrails:** Protect personal information, classify support tickets, handle invalid outputs and token limits, and route tickets using customer information from Part B.
+- **Part D – Policy RAG Assistant and Refund Agent:** Retrieve information from policy documents and implement an offline tool-using refund agent with validation, safety limits and resumable execution.
 
-The four parts share data and outputs. Part B produces customer segments used by Part C. Part D queries the cleaned database from Part A and uses policy retrieval to support refund decisions.
+All monetary values are represented in Indian Rupees (INR). All datasets are synthetic and fictional and are intended for academic demonstration.
 
-All monetary values are represented in Indian Rupees (INR). The data is synthetic and intended for academic demonstration.
+### Important implementation note
 
-## 2. Reproduction
+The project uses the supplied `mock_llm.py` as a deterministic, offline stand-in for an LLM API. It does not connect to a live GPT service or require an API key. The project demonstrates classification, retrieval, tool execution, validation, token estimation and agent workflows using this offline implementation.
+
+---
+
+## 2. Reproducing the Project
 
 ### 2.1 Prerequisites
 
-- Python 3.12 or a compatible Python version.
+- Python 3.12.3 (the version used to test this project).
 - Git.
 - Windows PowerShell or a compatible terminal.
 
@@ -27,6 +31,7 @@ All monetary values are represented in Indian Rupees (INR). The data is syntheti
 
 ```bash
 git clone https://github.com/HARI-16-10-07/Instamart-Customer-Intelligence-Copilot.git
+
 cd Instamart-Customer-Intelligence-Copilot
 ```
 
@@ -36,86 +41,77 @@ Windows PowerShell:
 
 ```powershell
 python -m venv venv
+
 .\venv\Scripts\Activate.ps1
 ```
 
 ### 2.4 Install dependencies
 
-```powershell
+```bash
 python -m pip install -r requirements.txt
 ```
 
-### 2.5 Generate the synthetic data
+### 2.5 Generate synthetic data
 
-Run the supplied generator once when setting up a fresh repository:
+For a fresh setup, generate the raw datasets and policy documents once:
 
-```powershell
+```bash
 python generate_data.py
 ```
 
-This generates the raw CSV files and policy documents used by the project.
+This creates the synthetic raw CSV files and policy documents used by the project.
 
-The supplied `generate_data.py` and `mock_llm.py` files are retained unmodified.
-
-**Important:** Do not rerun the data generator when you want to rebuild the project using the existing raw data, because it regenerates the raw datasets.
+**Important:** `generate_data.py` regenerates the raw synthetic data. Do not run it unnecessarily when you want to preserve an existing dataset or reproduce results from the current raw files.
 
 ### 2.6 Run the complete project
 
-The master runner executes the project stages in dependency order, including the Part A data foundation, Part B customer analysis, Part C ticket triage and Part D policy and agent demonstrations.
+The project includes a master execution script:
 
-```powershell
+```bash
 python run_project.py
 ```
 
-The runner uses the existing raw data and does not automatically rerun `generate_data.py`. It stops if a required stage fails and runs independent stages in parallel where appropriate.
+The master runner coordinates the connected project components using the existing raw data. It runs the data foundation, customer segmentation and lapse prediction, ticket triage, policy retrieval and agent workflows in the required order.
 
-### 2.7 Individual scripts
+The runner does not automatically regenerate the raw data using `generate_data.py`. This prevents an ordinary pipeline run from unexpectedly replacing the existing raw datasets.
 
-Individual scripts can also be executed when testing or debugging a particular component.
+### 2.7 Individual validation commands
 
-**Part A:**
+The following validation scripts can also be run independently after their corresponding implementation steps:
 
-```powershell
-python src/audit_raw_data.py
-python src/clean_data.py
-python src/create_database.py
+**Part A**
+
+```bash
 python src/validate_part_a.py
-python src/run_sql_analysis.py
 ```
 
-**Part B:**
+**Part B**
 
-```powershell
-python src/build_customer_segments.py
-python src/prepare_lapse_data.py
-python src/train_lapse_models.py
-python src/create_retention_list.py
+```bash
 python src/validate_part_b.py
 ```
 
-**Part C:**
+Part C and Part D demonstrations are coordinated through the master runner. Avoid running every Python file indiscriminately: data generators, demonstrations and agent scripts may regenerate files or append execution records.
 
-```powershell
-python src/triage_tickets.py
-```
+---
 
-**Part D:**
+## 3. Part A – Data Foundation
 
-```powershell
-python src/policy_rag.py
-python src/refund_tools.py
-python src/refund_agent.py
-```
+### 3.1 Objective
 
-The master runner is recommended for a complete rebuild because it manages dependencies and the order in which outputs are generated.
+Part A converts the generated raw data into a trusted analytical dataset.
 
-## 3. Part A – Data Foundation: Clean, Store and Query
+The work includes:
 
-### 3.1 Overview
+- Auditing the raw datasets.
+- Handling missing values and invalid records.
+- Removing duplicate records.
+- Standardizing customer and order information.
+- Creating an SQLite analytical database.
+- Executing SQL queries.
+- Performing Pandas analysis and exploratory data analysis.
 
-Part A converts generated raw data into a trusted analytical dataset. It includes raw-data auditing, customer and order cleaning, SQLite database creation, SQL analysis and exploratory analysis using Pandas.
-
-### 3.2 Raw data audit
+### 3.2 Raw Data Audit
 
 Six raw CSV files are generated:
 
@@ -128,24 +124,26 @@ Six raw CSV files are generated:
 
 The audit script examines dataset shapes, data types, missing-value counts and missing-value percentages.
 
-Important raw-data audit results:
+The ticket data is read with `keep_default_na=False` to preserve empty ticket text for later processing.
 
-| Audit item | Result |
+**Important raw-data findings**
+
+| Raw data finding | Result |
 |---|---:|
 | Raw order rows | 13,084 |
 | Exact duplicate order rows | 119 |
 | Pending order rows | 656 |
 | Distinct order IDs | 12,309 |
-| Non-numeric or missing order amounts | 120 |
+| Nonnumeric or missing order amounts | 120 |
 | Negative delivery times | 106 |
 | Blank delivery times | 2,541 |
-| Blank customer ages | 61 |
-| Customer ages outside 10–100 | 6 |
+| Customers with blank ages | 61 |
+| Customers with ages outside 10–100 | 6 |
 | Distinct raw city spellings | 24 |
-| Distinct non-blank gender spellings | 10 |
-| Blank gender values | 30 |
+| Distinct nonblank raw gender spellings | 10 |
+| Customers with blank gender | 30 |
 
-### 3.3 Customer data cleaning
+### 3.3 Customer Data Cleaning
 
 The customer dataset retains 1,200 rows.
 
@@ -162,9 +160,11 @@ City names are stripped of surrounding whitespace and standardized using title c
 
 Gender spellings are mapped to `male`, `female` or `unknown`. Blank gender values become `unknown`.
 
-Ages outside the range of 10–100 are treated as missing. Missing ages are filled using the median age of the corresponding city, calculated using `groupby` and `transform`. Signup dates are converted to datetime values.
+Ages outside the valid range of 10–100 are treated as missing. Missing ages are filled using the median age of the corresponding city, calculated using `groupby` and `transform`.
 
-Final city counts:
+Signup dates are converted to datetime values.
+
+**Final city counts**
 
 | City | Customers |
 |---|---:|
@@ -174,35 +174,34 @@ Final city counts:
 | Chennai | 191 |
 | Hyderabad | 191 |
 | Mumbai | 184 |
-| **Total** | **1,200** |
 
-Final gender counts:
+**Final gender counts**
 
-| Gender | Customers |
-|---|---:|
-| Female | 610 |
-| Male | 560 |
-| Unknown | 30 |
+- Female: 610
+- Male: 560
+- Unknown: 30
 
-No missing ages remain, and the cleaned age range is 18–60.
+No missing ages remain after cleaning. The cleaned age range is 18–60.
 
-### 3.4 Product data cleaning
+### 3.4 Product Data Cleaning
 
-The product dataset retains all 40 rows. No product cleaning changes were required because the raw product data passed the relevant missing-value checks.
+The product dataset retains all 40 rows.
 
-### 3.5 Order data cleaning
+No product cleaning changes were required.
 
-The order-cleaning process applies the following operations:
+### 3.5 Order Data Cleaning
+
+The order-cleaning process applies the following operations in sequence:
 
 1. Convert `order_ts` into datetime values.
 2. Remove 119 exact duplicate rows.
-3. Resolve duplicate order IDs by retaining the record with the latest `order_ts`.
-4. Standardize order statuses by removing surrounding whitespace and converting values to lowercase.
-5. Remove pending orders remaining after duplicate-ID resolution.
-6. Convert order amounts to numeric values and fill missing or invalid amounts using product price, quantity and discount.
-7. Treat negative delivery-time values as missing.
-8. Fill missing delivery times for completed orders using the median delivery time of the corresponding product category.
-9. Keep cancelled-order delivery times missing because cancelled orders were never delivered.
+3. Resolve 656 duplicate order IDs by retaining the latest order record.
+4. Standardize order statuses by removing surrounding whitespace and converting values to lowercase. No status values required standardization.
+5. Remove pending orders remaining after duplicate-ID resolution. No additional pending rows remained to be removed.
+6. Convert order amounts to numeric values and fill 112 missing or invalid amounts using product price, quantity and discount.
+7. Treat 105 negative delivery-time values as missing after duplicate resolution.
+8. Fill 774 missing delivery times for completed orders using the median delivery time of the corresponding product category.
+9. Keep cancelled-order delivery times missing.
 
 The cleaned orders dataset contains 12,309 unique order IDs.
 
@@ -218,9 +217,9 @@ Final checks confirm:
 - Zero missing delivery times among completed orders.
 - 1,199 missing delivery times among cancelled orders.
 
-Completed-order revenue is **INR 29,98,668.80**.
+Completed order revenue is **INR 2,998,668.80**.
 
-### 3.6 SQLite database
+### 3.6 SQLite Database
 
 The cleaned datasets are stored in `data/instamart.db`, an SQLite database containing three tables:
 
@@ -230,7 +229,13 @@ The cleaned datasets are stored in `data/instamart.db`, an SQLite database conta
 
 The database creation script defines primary keys, foreign keys and applicable constraints, loads the cleaned CSV data and checks foreign-key integrity.
 
-### 3.7 SQL analysis
+The `order_ts` values are stored as SQLite-compatible text in the format:
+
+```text
+YYYY-MM-DD HH:MM:SS
+```
+
+### 3.7 SQL Analysis
 
 Seven SQL queries are stored in `sql/queries.sql` and executed through Pandas using `pd.read_sql_query`.
 
@@ -244,40 +249,84 @@ Seven SQL queries are stored in `sql/queries.sql` and executed through Pandas us
 | Q6 | Customer spending rankings within each city | 1,175 customers |
 | Q7 | Daily revenue and cumulative running total | 183 days |
 
-Q2 produces total completed revenue of INR 29,98,668.80. The highest city-category revenue is Bengaluru Electronics at INR 2,33,909.45.
+**Q1 – High-spending customers**
 
-Q5 calculates average completed customer spend of approximately INR 2,552.06.
+Uses filtering and aggregation to identify customers whose qualifying completed-order spending exceeds INR 8,000.
 
-Q6 demonstrates `RANK()`, `DENSE_RANK()` and `ROW_NUMBER()` window functions. There are eight rows where `RANK()` differs from `ROW_NUMBER()` because tied spending values receive the same rank, while `ROW_NUMBER()` always assigns a distinct sequential number.
+**Q2 – Revenue by city and category**
 
-Q7 produces a final cumulative revenue of INR 29,98,668.80.
+Uses joins across customers, orders and products to calculate revenue by city and product category.
 
-### 3.8 Pandas analysis
+- Total completed revenue: INR 2,998,668.80.
+- Highest city-category revenue: Bengaluru Electronics at INR 233,909.45.
+
+**Q3 – Products above average catalogue price**
+
+Uses a scalar subquery to identify products priced above the average catalogue price.
+
+Result: 11 products.
+
+**Q4 – Customers without completed orders**
+
+Uses a LEFT JOIN to identify customers who have not placed a completed order.
+
+Result: 25 customers.
+
+**Q5 – Customers spending above average**
+
+Uses a Common Table Expression (CTE) to calculate customer spending and the average customer spending.
+
+- Average completed customer spend: approximately INR 2,552.06.
+- Result: 550 customers above average.
+
+**Q6 – Customer spending rankings**
+
+Uses the window functions `RANK()`, `DENSE_RANK()` and `ROW_NUMBER()` to rank customers within each city.
+
+There are eight rows where `RANK()` differs from `ROW_NUMBER()` because of tied spending values.
+
+**Q7 – Daily revenue and running total**
+
+Uses aggregation and the window function `SUM() OVER (ORDER BY day)` to calculate daily completed revenue and cumulative revenue.
+
+The query produces 183 days, with a final cumulative revenue of INR 2,998,668.80.
+
+### 3.8 Pandas Analysis
 
 The analysis also uses:
 
 - `pivot_table` with margins.
-- Named aggregation.
+- Grouping and named aggregation.
 - Descriptive statistics.
-- IQR-based outlier detection.
+- Outlier detection using the IQR method.
 - Correlation analysis.
 
-Results include:
+**Revenue cross-checks**
 
-- The Q2 pivot-table grand total matches INR 29,98,668.80.
-- Bengaluru completed revenue is INR 5,23,643.40 across 1,894 orders.
-- Mumbai completed revenue is INR 4,79,058.50 across 1,613 orders.
-- Completed-order amount mean: INR 269.91.
-- Median: INR 135.00.
-- Skewness: approximately 4.61.
-- First quartile: INR 64.80.
-- Third quartile: INR 297.00.
-- Upper IQR fence: INR 645.30.
-- Upper outliers: 897; lower outliers: 0.
+- The Q2 pivot-table grand total matches INR 2,998,668.80.
+- Bengaluru completed revenue is INR 523,643.40 across 1,894 orders.
+- Mumbai completed revenue is INR 479,058.50 across 1,613 orders.
 
-The largest absolute correlation is between order amount and discount percentage (approximately -0.095). The correlation between order amount and quantity is approximately +0.087. Both relationships are weak, and correlation does not establish causation.
+**Completed order amount statistics**
 
-### 3.9 Exploratory Data Analysis questions
+| Statistic | Result |
+|---|---:|
+| Mean | INR 269.91 |
+| Median | INR 135.00 |
+| Skewness | Approximately 4.61 |
+| First quartile | INR 64.80 |
+| Third quartile | INR 297.00 |
+| Upper IQR fence | INR 645.30 |
+| Upper outliers | 897 |
+| Lower outliers | 0 |
+
+The largest absolute correlation is between order amount and discount percentage (approximately -0.095).
+
+The correlation between order amount and quantity is approximately +0.087.
+
+Both relationships are weak, and correlation does not establish causation.
+
+### 3.9 Exploratory Data Analysis Questions
 
 **1. What is this data about?**
 
@@ -295,9 +344,15 @@ The 1.5 × IQR lower fence is INR -283.50 and the upper fence is INR 645.30. The
 
 The largest absolute correlation is between order amount and discount percentage (approximately -0.095). Order amount and quantity have a correlation of approximately +0.087. Both relationships are weak; correlation of this size does not establish causation.
 
-### 3.10 Part A validation
+### 3.10 Part A Validation
 
 The script `src/validate_part_a.py` checks the cleaned datasets, database tables, row counts, data integrity and expected analytical results.
+
+Run:
+
+```bash
+python src/validate_part_a.py
+```
 
 Successful execution prints:
 
@@ -305,307 +360,275 @@ Successful execution prints:
 ALL CHECKPOINTS PASSED
 ```
 
+Part A is implemented and validated.
+
+---
+
 ## 4. Part B – Customer Segments and Lapse Prediction
 
-### 4.1 Overview
+### 4.1 Objective
 
-Part B uses the clean customer and order datasets from Part A to identify meaningful customer groups and predict which customers are likely to stop ordering.
+Part B uses the cleaned customer and order data produced in Part A to identify meaningful customer segments and predict customers who may stop ordering.
 
-The two main components are:
+The implementation has two main components:
 
-- RFM-based customer segmentation using K-means clustering.
-- Lapse prediction using Logistic Regression and Random Forest models.
+1. RFM-based customer segmentation using K-Means clustering.
+2. Customer lapse prediction using Logistic Regression and Random Forest.
 
-The resulting customer segment file is also used by Part C for support-ticket routing.
+The generated customer segments are also used to create a Premium customer retention shortlist.
 
-### 4.2 RFM analysis
+### 4.2 RFM Analysis
 
-RFM analysis is performed using completed orders only.
+RFM analysis uses three customer behaviour measurements:
 
-The snapshot date is `2025-10-01 00:00:00`.
-
-The three RFM measures are:
-
-- **Recency:** Number of whole days between the snapshot and the customer's most recent completed order.
+- **Recency:** Number of days since the customer's most recent completed order.
 - **Frequency:** Number of distinct completed orders placed by the customer.
-- **Monetary:** Total completed order amount spent by the customer.
+- **Monetary:** Total amount spent on completed orders.
 
-RFM results:
+The snapshot date is fixed at `2025-10-01 00:00:00`.
 
-| Metric | Result |
+Only completed orders are included in the RFM calculations.
+
+**RFM dataset summary**
+
+| Measurement | Result |
 |---|---:|
 | Customers with completed orders | 1,175 |
-| Recency median | 19 days |
+| Median recency | 19 days |
 | Minimum recency | 0 days |
 | Maximum recency | 180 days |
-| Mean frequency | 9.46 |
-| Maximum frequency | 33 |
-| Mean monetary value | INR 2,552.06 |
+| Average frequency | 9.46 orders |
+| Maximum frequency | 33 orders |
+| Average monetary value | INR 2,552.06 |
 | Maximum monetary value | INR 14,766.55 |
 
-### 4.3 K-means customer segmentation
+### 4.3 Customer Segmentation Using K-Means
 
 The three RFM features are standardized using `StandardScaler` before clustering.
 
-K-means is evaluated for every K from 2 to 8 using:
+K-Means clustering is evaluated for K values from 2 to 8. Each model uses:
 
-- `KMeans`
-- `n_clusters`
 - `n_init=10`
 - `random_state=42`
-- Inertia
-- Silhouette score
 
-The actual model comparison results are:
+Both inertia and silhouette score are used to evaluate the clustering results.
+
+**K-Means comparison**
 
 | K | Inertia | Silhouette Score |
 |---:|---:|---:|
-| 2 | 1820.7606 | 0.4650 |
-| 3 | 1268.2346 | 0.4452 |
+| 2 | 1,820.7606 | 0.4650 |
+| 3 | 1,268.2346 | 0.4452 |
 | 4 | 743.0711 | 0.5255 |
 | 5 | 617.3666 | 0.4805 |
 | 6 | 503.1706 | 0.4819 |
 | 7 | 408.4605 | 0.4163 |
 | 8 | 366.5035 | 0.4123 |
 
-**Selected number of clusters: K = 4**
+**Selected cluster count: K = 4**
 
-K=4 was selected because it achieved the highest silhouette score (0.5255) among the tested configurations. The elbow comparison also shows a substantial reduction in inertia from K=3 to K=4, followed by smaller improvements as K increases. Four clusters provide a useful balance between cluster separation and business interpretability, allowing the retention team to work with four actionable customer groups.
+K=4 is selected because it has the highest silhouette score among the evaluated values. It also provides a useful business interpretation through four distinct groups: Regular, Premium, Loyal and At Risk.
 
-Inertia at K=8 is lower than at K=2 because increasing the number of clusters gives K-means more centroids, allowing customers to be closer to their assigned centroid. However, inertia generally decreases as K increases, so the lowest inertia alone cannot identify the best number of clusters. The elbow, silhouette scores and usefulness of the resulting segments must also be considered.
+The elbow comparison supports this choice: inertia decreases substantially from K=3 (1,268.2346) to K=4 (743.0711), while the reductions become smaller after K=4.
 
-The final K-means model uses:
+K=8 has lower inertia than K=2 because inertia generally decreases as more clusters are added: individual points can be assigned to more closely located centroids. However, the lowest inertia alone does not identify the best clustering solution. A larger K can create unnecessary segmentation without improving separation or business usefulness. The silhouette score and interpretability therefore matter alongside inertia.
 
-```python
-KMeans(
-    n_clusters=4,
-    n_init=10,
-    random_state=42
-)
-```
+### 4.4 Customer Segment Profiles
 
-Cluster IDs are arbitrary labels and do not represent customer value or ranking. The clusters are assigned descriptive names based on their RFM profiles.
+The four clusters are assigned descriptive business names based on their RFM characteristics.
 
-### 4.4 PCA explained variance
+| Segment | Customers | Average Recency (days) | Average Frequency | Average Monetary (INR) |
+|---|---:|---:|---:|---:|
+| Regular | 436 | 28.86 | 3.77 | 1,057.62 |
+| Premium | 138 | 24.12 | 6.77 | 7,129.70 |
+| Loyal | 419 | 8.77 | 19.40 | 3,410.02 |
+| At Risk | 182 | 109.04 | 2.20 | 685.99 |
 
-Principal Component Analysis (PCA) is performed using exactly two components on the standardized RFM features: recency, frequency and monetary.
+**Business interpretation and actions**
+
+- **Premium:** Highest average monetary value. Provide personalized offers, priority support and loyalty rewards.
+- **Loyal:** High ordering frequency and recent activity. Encourage repeat purchases through loyalty benefits and relevant product recommendations.
+- **Regular:** Moderate purchasing behaviour. Encourage more frequent purchases through targeted promotions and product recommendations.
+- **At Risk:** Long time since the last completed order and low purchasing frequency. Use reactivation campaigns and targeted discounts to encourage customers to return.
+
+Cluster numbers are algorithm-generated identifiers and do not represent an inherent ranking.
+
+### 4.5 PCA Analysis
+
+Principal Component Analysis (PCA) is applied to the standardized RFM features to examine how much variance can be represented in two dimensions.
 
 | Component | Explained Variance Ratio |
 |---|---:|
-| PC1 | 0.634 |
-| PC2 | 0.218 |
-| **Combined** | **0.852** |
+| Principal Component 1 | 0.634 |
+| Principal Component 2 | 0.218 |
+| **Total** | **0.852** |
 
-The first principal component explains 63.4% of the variance, while the second explains 21.8%. Together, the two components retain approximately 85.2% of the total variance in the standardized RFM data.
+The first two principal components explain approximately 85.2% of the variance in the standardized RFM data.
 
-### 4.5 Customer segment profiles
+### 4.6 Lapse Prediction Dataset Preparation
 
-The four segments are named according to their observed RFM characteristics.
+The lapse prediction dataset is constructed using a cutoff date of `2025-09-01`.
 
-| Segment | Customers | Mean Recency | Mean Frequency | Mean Monetary |
-|---|---:|---:|---:|---:|
-| Regular | 436 | 28.86 days | 3.77 | INR 1,057.62 |
-| Premium | 138 | 24.12 days | 6.77 | INR 7,129.70 |
-| Loyal | 419 | 8.77 days | 19.40 | INR 3,410.02 |
-| At Risk | 182 | 109.04 days | 2.20 | INR 685.99 |
-| **Total** | **1,175** | | | |
+Customers who placed at least one completed order before the cutoff are included in the eligible cohort.
 
-Business interpretation and recommended actions:
+A customer is labelled as lapsed (`1`) if they do not place a completed order during September 2025. Otherwise, the customer is labelled as not lapsed (`0`).
 
-| Segment | Interpretation | Recommended action |
-|---|---|---|
-| Regular | Customers with moderate or relatively low order activity | Encourage repeat purchases through relevant offers |
-| Premium | Customers with the highest average monetary value | Provide personalized offers and prioritize retention |
-| Loyal | Customers with frequent and recent purchases | Encourage continued engagement and loyalty |
-| At Risk | Customers with high recency and low purchase frequency | Use reactivation campaigns and targeted incentives |
+**Dataset summary**
 
-The Premium segment is selected based on its highest mean monetary value. The `is_premium` flag is set to 1 for customers belonging to this segment and 0 for all other customers.
-
-### 4.6 Lapse prediction problem
-
-The lapse prediction task uses the cutoff date `2025-09-01`.
-
-The cohort includes customers with at least one completed order before the cutoff.
-
-A customer is labelled as lapsed if they have no completed order dated from `2025-09-01` through `2025-09-30`.
-
-The model features are constructed using only information available before the cutoff:
-
-- Recency.
-- Frequency.
-- Monetary.
-- Average discount percentage.
-- Cancellation rate.
-- Average delivery time.
-- Favourite product category.
-- City.
-- Age.
-- Gender.
-- Customer tenure.
-
-No order dated on or after `2025-09-01` enters the model features. Segment labels from the RFM task are not used as model features.
-
-Cohort results:
-
-| Metric | Result |
+| Measurement | Result |
 |---|---:|
 | Eligible customers | 1,156 |
-| Lapsed customers | 443 |
-| Not-lapsed customers | 713 |
+| Not lapsed | 713 |
+| Lapsed | 443 |
 | Lapsed percentage | 38.32% |
-| Training rows | 924 |
-| Test rows | 232 |
+| Not-lapsed percentage | 61.68% |
 
-The train-test split uses `test_size=0.2`, `stratify=y` and `random_state=42`.
+The dataset contains 1,156 customers and 13 columns, including the customer identifier, 11 input features and the target label.
 
-The baseline model always predicts not lapsed:
+**Features used**
 
-- Baseline accuracy: approximately 61.6%.
-- Baseline lapsed-class F1: 0.
+| Feature | Description |
+|---|---|
+| `recency` | Days since the last completed order before the cutoff |
+| `frequency` | Number of completed orders before the cutoff |
+| `monetary` | Total completed-order spending before the cutoff |
+| `avg_discount` | Average discount percentage on completed orders |
+| `cancellation_rate` | Cancelled orders divided by all final-status orders |
+| `avg_delivery` | Average delivery time of completed orders |
+| `favorite_category` | Most frequently ordered product category |
+| `city` | Customer city |
+| `age` | Customer age |
+| `gender` | Customer gender |
+| `tenure_days` | Days since signup at the cutoff date |
 
-### 4.7 Preprocessing and leakage prevention
+All input features are constructed using information available before `2025-09-01`. September activity is used only to generate the target label. Customer segment labels are not included as model features.
 
-The preprocessing pipeline includes:
+Missing values in the model features are checked before training.
 
-- One-hot encoding of nominal features.
-- Standardization of numeric features.
-- Training-only fitting of preprocessing transformations.
+### 4.7 Training and Testing
 
-The nominal variables include city, gender and favourite product category. One-hot encoding uses `OneHotEncoder(drop="first")`, which creates k−1 columns for each nominal variable.
+The dataset is divided using a stratified 80:20 train/test split with `random_state=42`.
 
-The numeric features are standardized using a fitted scaler.
-
-The encoder and scaler are fitted only on the training rows. They are then applied to the test rows without refitting.
-
-No encoder, scaler or resampler saw test rows during fitting. No data from `2025-09-01` onwards entered the model features, and the Part B segment labels were not used as features.
-
-The feature data is checked for missing values before model training.
-
-The learned training-set frequency mean can differ from the full-cohort frequency mean because the scaler is fitted on the training subset rather than the complete cohort.
-
-### 4.8 Model training and hyperparameter tuning
-
-Two classification algorithms are evaluated.
-
-**Logistic Regression**
-
-```python
-LogisticRegression(max_iter=1000)
-```
-
-The hyperparameter grid is:
-
-```python
-C = [0.01, 0.1, 1, 10, 100]
-```
-
-Grid search uses:
-
-- `GridSearchCV`
-- `cv=5`
-- `scoring="f1"`
-
-The selected Logistic Regression configuration uses `C=100`, with a best cross-validation F1 of approximately 0.6506.
-
-**Random Forest**
-
-```python
-RandomForestClassifier(
-    n_estimators=100,
-    random_state=42
-)
-```
-
-The hyperparameter grid is:
-
-```python
-n_estimators = [100]
-max_depth = [3, 5, 8]
-min_samples_leaf = [5, 10, 20]
-```
-
-Grid search uses:
-
-- `GridSearchCV`
-- `cv=5`
-- `scoring="f1"`
-
-The selected Random Forest configuration uses:
-
-- `n_estimators=100`
-- `max_depth=8`
-- `min_samples_leaf=10`
-- `random_state=42`
-
-Its best cross-validation F1 is approximately 0.6811. The grid contains nine parameter combinations evaluated across five folds, giving 45 fits.
-
-**Final model selection**
-
-The final model is selected by comparing the cross-validation F1 scores of the Logistic Regression and Random Forest models. Random Forest is selected because it achieves the higher cross-validation F1 score (approximately 0.6811 compared with approximately 0.6506 for Logistic Regression). The test set is not used for model selection.
-
-### 4.9 Model evaluation
-
-The tuned models are evaluated on the untouched test set. Precision, recall and F1 are calculated for the positive class, `lapsed`.
-
-**Logistic Regression**
-
-Confusion matrix:
-
-```text
-[[111, 32],
- [ 31, 58]]
-```
-
-| Metric | Result |
+| Dataset | Records |
 |---|---:|
-| Precision | 0.6444 |
-| Recall | 0.6517 |
-| F1-score | 0.6480 |
+| Training | 924 |
+| Testing | 232 |
+| Total | 1,156 |
 
-**Random Forest**
+**Training class distribution**
 
-Confusion matrix:
-
-```text
-[[113, 30],
- [ 31, 58]]
-```
-
-| Metric | Result |
-|---|---:|
-| Precision | 0.6591 |
-| Recall | 0.6517 |
-| F1-score | 0.6554 |
-
-The Random Forest achieves a slightly higher test F1-score and precision than the tuned Logistic Regression model.
-
-The cost of missing a lapsing customer is potentially losing future purchases and retention opportunities. However, wrongly targeting a loyal customer can waste campaign resources and incentives. The selected Random Forest model provides a slightly better balance of precision and recall on the test set than the original Logistic Regression model. The retention team should consider the available campaign budget and the cost of incentives when deciding how many high-risk customers to contact.
-
-### 4.10 Class-balance experiment
-
-The lapsed class is the minority class.
-
-To study the effect of class imbalance, the training set is oversampled by retaining all original training rows and adding randomly selected duplicate lapsed training rows until both classes have equal counts.
-
-Oversampling is performed only on the training data. The original test set remains unchanged.
-
-Balanced training counts:
-
-| Class | Rows |
+| Class | Records |
 |---|---:|
 | Not lapsed | 570 |
-| Lapsed | 570 |
+| Lapsed | 354 |
 
-The best Logistic Regression model is refitted on this balanced training data.
+**Testing class distribution**
 
-Oversampled Logistic Regression results:
+| Class | Records |
+|---|---:|
+| Not lapsed | 143 |
+| Lapsed | 89 |
 
-Confusion matrix:
+A baseline model that predicts every customer as not lapsed achieves 61.64% accuracy but has an F1-score of 0 for the lapsed class. This demonstrates why accuracy alone is insufficient for evaluating the lapse prediction task.
+
+### 4.8 Preprocessing and Model Training
+
+A `ColumnTransformer` and scikit-learn `Pipeline` are used for preprocessing and model training.
+
+- Numerical features are standardized using `StandardScaler`.
+- Categorical features are encoded using `OneHotEncoder(drop="first", handle_unknown="ignore")`.
+- Preprocessing is fitted only on training data through the model pipelines.
+- Grid search and cross-validation use the training data only.
+
+The training-only scaler frequency mean is 8.1147, compared with the full-cohort frequency mean of 8.0285. This difference is expected because the scaler is fitted on the training subset rather than the entire cohort.
+
+**Logistic Regression**
+
+GridSearchCV evaluates the following C values:
+
+```python
+[0.01, 0.1, 1, 10, 100]
+```
+
+The maximum iteration count is 1,000, and five-fold cross-validation uses the F1-score.
+
+Best parameter:
 
 ```text
-[[90, 53],
- [13, 76]]
+C = 100
 ```
+
+Best cross-validation F1-score: **0.6506**
+
+**Random Forest**
+
+GridSearchCV evaluates:
+
+- `n_estimators = 100`
+- `random_state = 42`
+- `max_depth = [3, 5, 8]`
+- `min_samples_leaf = [5, 10, 20]`
+
+Five-fold cross-validation uses the F1-score, resulting in 45 parameter/fold fits.
+
+Best parameters:
+
+- `max_depth = 8`
+- `min_samples_leaf = 10`
+- `n_estimators = 100`
+
+Best cross-validation F1-score: **0.6811**
+
+### 4.9 Test-Set Model Evaluation
+
+Both trained models are evaluated on the same untouched test set.
+
+| Metric | Logistic Regression | Random Forest |
+|---|---:|---:|
+| Accuracy | 0.7284 | 0.7371 |
+| Lapsed-class Precision | 0.6444 | 0.6591 |
+| Lapsed-class Recall | 0.6517 | 0.6517 |
+| Lapsed-class F1-score | 0.6480 | 0.6554 |
+
+**Confusion matrices**
+
+Logistic Regression:
+
+```text
+[[111  32]
+ [ 31  58]]
+```
+
+Random Forest:
+
+```text
+[[113  30]
+ [ 31  58]]
+```
+
+Random Forest is selected as the final model because it achieves a slightly higher test accuracy, precision and F1-score than Logistic Regression, while maintaining the same recall. Its test F1-score is approximately 0.6554, exceeding the required 0.55 threshold.
+
+From a business perspective, false negatives represent customers who are likely to lapse but are not identified for retention activity. False positives represent customers incorrectly identified as likely to lapse, potentially resulting in unnecessary promotional spending. Both types of errors matter, so precision and recall are considered alongside F1-score.
+
+### 4.10 Oversampling Experiment
+
+The original training dataset contains 570 non-lapsed customers and 354 lapsed customers.
+
+To address class imbalance, the minority class is oversampled using replacement with `random_state=42`.
+
+All 354 original minority-class records are retained, and 216 additional samples are drawn with replacement.
+
+The resulting training distribution is:
+
+| Class | Before | After |
+|---|---:|---:|
+| Not lapsed | 570 | 570 |
+| Lapsed | 354 | 570 |
+| Total | 924 | 1,140 |
+
+Oversampling is performed only on the training data. The test set remains unchanged.
+
+**Before and after oversampling**
 
 | Metric | Original Logistic Regression | Oversampled Logistic Regression |
 |---|---:|---:|
@@ -614,334 +637,281 @@ Confusion matrix:
 | F1-score | 0.6480 | 0.6972 |
 | Accuracy | 0.7284 | 0.7155 |
 
-Recall increases from approximately 0.6517 to 0.8539, the largest improvement among the reported precision, recall and F1 metrics. This means the oversampled model identifies a larger proportion of customers who are actually lapsing, which is useful for retention campaigns. However, precision decreases, so the retention team may need to contact more customers who would not have lapsed.
+Oversampled confusion matrix:
 
-The oversampled model demonstrates the trade-off between identifying more at-risk customers and increasing false-positive targeting. It is an experiment and is not the model selected for the final saved prediction model.
+```text
+[[90 53]
+ [13 76]]
+```
 
-### 4.11 Feature interpretation
+Recall increases from 0.6517 to 0.8539, an improvement of approximately 20.22 percentage points. F1-score also increases, while precision and accuracy decrease.
 
-The Random Forest model's five leading features are:
+This demonstrates that oversampling improves the identification of lapsed customers but also increases false-positive predictions. The original Random Forest remains the selected final model based on the comparison of the two original models.
+
+### 4.11 Feature Importance and Model Interpretation
+
+Random Forest feature importance is used to identify the five most influential features.
 
 | Feature | Importance |
 |---|---:|
-| Frequency | 0.2796 |
-| Monetary | 0.2712 |
-| Recency | 0.1151 |
-| Average delivery time | 0.0613 |
-| Cancellation rate | 0.0523 |
+| Frequency | 0.279589 |
+| Monetary | 0.271176 |
+| Recency | 0.115149 |
+| Average delivery | 0.061286 |
+| Cancellation rate | 0.052325 |
 
-Frequency and monetary value are the most influential features in the fitted Random Forest model. This indicates that customer purchasing behaviour contributes substantially to the model's predictions.
+Frequency and monetary value have the highest feature importance among the evaluated features.
 
-The leading Logistic Regression coefficients include:
+Logistic Regression coefficients provide additional information about the direction of the learned associations.
 
-| Feature | Coefficient | Interpretation |
-|---|---:|---|
-| Frequency | -1.698 | Higher purchase frequency is associated with lower predicted lapse likelihood |
-| Favourite category: Electronics | -1.137 | This category has a negative coefficient relative to the reference category |
-| Monetary | -0.449 | Higher spending is associated with lower predicted lapse likelihood |
+| Feature | Coefficient |
+|---|---:|
+| Frequency | -1.698239 |
+| Favorite category: Electronics | -1.136713 |
+| Favorite category: Grocery | -0.448673 |
 
-A negative coefficient indicates a decrease in the model's predicted log-odds of the lapsed class, holding other features constant.
+These negative coefficients indicate lower predicted lapse log-odds relative to the relevant reference categories, holding other features constant. They describe model associations and should not be interpreted as proof of causation.
 
-### 4.12 Model persistence and retention list
+### 4.12 Model Saving and Reload Verification
 
-The selected model is saved using `joblib.dump` to:
+The selected Random Forest model is saved using `joblib` at:
 
 ```text
 outputs/lapse_model.joblib
 ```
 
-The saved model is loaded using `joblib.load` for subsequent predictions and validation.
+The saved model is loaded again, and its predictions are compared with the predictions from the original in-memory model.
 
-The retention list is generated using the saved model in `outputs/lapse_model.joblib`.
+The training script reports:
 
-It is created by:
+```text
+PASS: Reloaded model reproduces test predictions exactly
+```
 
-1. Recreating the same stratified 80:20 train-test split using `random_state=42`.
-2. Identifying Premium customers using the `is_premium` flag from `customer_segments.csv`.
-3. Selecting Premium customers belonging to the test set.
-4. Calculating predicted lapse probabilities using the saved model.
-5. Ranking the selected customers by predicted lapse probability in descending order.
-6. Saving the top 10 customers, or all eligible customers if fewer than 10 exist.
+This confirms that the saved model can be loaded and used to reproduce the same test predictions.
 
-The retention list is saved to:
+### 4.13 Premium Customer Retention List
+
+The retention list is generated by combining the lapse prediction results with the Premium segment.
+
+The script:
+
+1. Recreates the same stratified train/test split.
+2. Identifies Premium customers.
+3. Selects Premium customers from the test set.
+4. Predicts lapse probabilities using the selected Random Forest model.
+5. Sorts customers by predicted lapse probability in descending order.
+6. Saves up to the top 10 customers.
+
+The generated file is:
 
 ```text
 outputs/retention_list.csv
 ```
 
-It contains the columns:
+It contains the following columns:
 
-```text
-customer_id, lapse_probability, actually_lapsed
-```
+- `customer_id`
+- `lapse_probability`
+- `actually_lapsed`
 
-The regenerated retention list contains 10 Premium customers, with one customer actually lapsed.
+**Retention list summary**
 
-**Important limitation:** The Premium flag is based on whole-window RFM information, including the September period used to define the lapse label. Therefore, the retention list is illustrative and is not a leakage-free evaluation, even though the model's own features use only pre-cutoff orders.
+| Measurement | Result |
+|---|---:|
+| Customers in retention list | 10 |
+| Actually lapsed customers | 1 |
 
-### 4.13 Part B outputs
+The list provides an illustrative shortlist for retention teams. The `actually_lapsed` column is included for evaluation against the September target.
 
-| Output | Purpose |
+**Important evaluation limitation:** The Premium flag is determined using whole-window RFM data, including September 2025, which overlaps with the lapse-label period. Therefore, the generated Premium retention list is illustrative and is not a leakage-free historical evaluation. The lapse prediction model itself uses only pre-cutoff features.
+
+### 4.14 Part B Output Files
+
+| File | Purpose |
 |---|---|
 | `outputs/customer_segments.csv` | Customer RFM values, segment assignments and Premium flag |
-| `outputs/kmeans_comparison.csv` | Inertia and silhouette comparison for K=2 to K=8 |
-| `outputs/lapse_dataset.csv` | Prepared customer features and lapse labels |
-| `outputs/lapse_model.joblib` | Saved selected lapse prediction model |
-| `outputs/retention_list.csv` | Top Premium-segment customers ranked by predicted lapse probability |
+| `outputs/kmeans_comparison.csv` | K-Means inertia and silhouette comparison |
+| `outputs/lapse_dataset.csv` | Prepared customer lapse dataset |
+| `outputs/lapse_model.joblib` | Saved selected Random Forest model |
+| `outputs/lapse_model_comparison.csv` | Model evaluation comparison |
+| `outputs/lapse_feature_importance.csv` | Random Forest feature importance |
+| `outputs/retention_list.csv` | Premium customer retention shortlist |
 
-The customer segment output contains:
-
-```text
-customer_id, recency, frequency, monetary, segment_id, segment_name, is_premium
-```
-
-### 4.14 Part B validation
+### 4.15 Part B Validation
 
 The script `src/validate_part_b.py` checks:
 
-- Required output files.
-- Customer segment columns and unique customer IDs.
-- Premium flag consistency with the highest-mean-monetary segment.
-- Lapse dataset IDs, labels and missing values.
-- Saved model loading and predicted probability validity.
-- Retention list columns, ordering, customer membership and actual labels.
+- Required Part B output files exist.
+- Customer segment records and Premium segment identification are valid.
+- Premium is the segment with the highest average monetary value.
+- Lapse dataset identifiers and target labels are valid.
+- The saved model loads successfully.
+- Model probability predictions are valid.
+- The retention list contains valid Premium customers from the lapse cohort.
+- Retention probabilities and actual lapse labels are valid.
 
-Successful execution prints:
+Run:
+
+```bash
+python src/validate_part_b.py
+```
+
+The completed validation run prints:
 
 ```text
 ALL PART B CHECKPOINTS PASSED
 ```
 
+The latest training and validation runs also confirmed exact prediction reproduction after reloading the saved model.
+
+Part B is implemented and validated.
+
+---
+
 ## 5. Part C – Support Ticket Triage with Guardrails
 
-### 5.1 Overview
+### 5.1 Objective
 
-Part C builds a safe and resilient support-ticket triage pipeline using the supplied `mock_llm.py`.
+Part C processes support tickets and prepares them for appropriate routing.
 
-The pipeline processes the 164 tickets in `data/raw/tickets.csv`. It applies input guardrails, removes personal information before model calls, compares zero-shot and few-shot classification, validates model responses, implements retries and token-budget controls, and routes tickets using the customer segments produced in Part B.
+The implementation focuses on:
 
-### 5.2 Input guardrails
+- Ticket input validation.
+- Empty and excessively long ticket handling.
+- Personally identifiable information (PII) redaction.
+- Zero-shot and few-shot classification.
+- Invalid model-output handling.
+- Token-budget enforcement.
+- Customer-segment-aware routing.
+- Ticket priority assignment.
 
-Before any model call, each ticket is checked.
+Part C consumes ticket data and uses customer segment information produced by Part B.
 
-- Empty or whitespace-only tickets receive `skipped_empty`.
-- Tickets whose estimated token count exceeds `MAX_INPUT_TOKENS = 400` receive `flagged_long`.
-- Neither type of ticket is sent to the model.
+**Implementation scope:** The current implementation processes the supplied ticket CSV in a batch workflow. It does not provide a separate live customer text-entry frontend.
 
-The token estimate uses the supplied `mock_llm.est_tokens()` function.
+### 5.2 Ticket Dataset and Input Guardrails
 
-Input guardrail results:
+The generated ticket dataset contains 164 tickets.
 
-| Status | Tickets |
+Input validation distinguishes between tickets that are ready for classification and tickets that need to be skipped or flagged.
+
+| Input condition | Records |
 |---|---:|
+| Total tickets | 164 |
 | Ready for classification | 156 |
-| `skipped_empty` | 4 |
-| `flagged_long` | 4 |
-| **Total** | **164** |
+| Empty tickets | 4 |
+| Excessively long tickets | 4 |
 
-The four long tickets have an estimated length of 734 tokens.
+Empty and excessively long tickets are handled by the input guardrails rather than being treated as ordinary classification requests.
 
-### 5.3 Privacy protection and PII redaction
+### 5.3 PII Protection
 
-Personal information is redacted before ticket text is sent to the model.
+Before classification, the ticket text is processed to redact personal information.
 
-The following patterns and placeholders are applied:
+The redaction process identified:
 
-| Personal information | Replacement | Substitutions |
-|---|---|---:|
-| Email | `[EMAIL]` | 55 |
-| Phone | `[PHONE]` | 91 |
-| Order ID | `[ORDER_ID]` | 132 |
-| **Total** | | **278** |
-
-The redacted ticket texts are checked again using all three patterns.
-
-Verification finds zero remaining email addresses, phone numbers or order IDs.
-
-An assertion in the code checks that no personal information remains before a model call. The user message content sent to the model consists of the redacted ticket text.
-
-### 5.4 Zero-shot and few-shot prompts
-
-Two system prompts are implemented.
-
-**Zero-shot prompt**
-
-The zero-shot prompt instructs the model to classify tickets into exactly four allowed categories:
-
-- `billing`
-- `delivery`
-- `technical`
-- `fraud`
-
-It requires a JSON-only response:
-
-```json
-{"category": "...", "reason": "..."}
-```
-
-It does not contain the `EXAMPLES:` section.
-
-**Few-shot prompt**
-
-The few-shot prompt contains the same classification instructions and allowed categories. It also includes an `EXAMPLES:` section with labelled examples, including a fraud example.
-
-Both prompts are validated through code assertions.
-
-### 5.5 Retry mechanism
-
-The supplied mock model can raise `TransientLLMError`. Every model call is therefore wrapped in a retry function.
-
-The retry configuration is:
-
-| Setting | Value |
+| PII type | Redactions |
 |---|---:|
-| Maximum retries | 3 |
-| Base delay | 0.05 seconds |
-| Jitter range | 0.9–1.15 |
-| Backoff | Exponential |
+| Email addresses | 55 |
+| Phone numbers | 91 |
+| Order IDs | 132 |
+| **Total** | **278** |
 
-The wait before retry number `n` is:
+The validation output confirmed that no targeted PII remained in the redacted ticket text.
 
-```python
-BASE_DELAY * (2 ** n) * random.uniform(0.9, 1.15)
-```
+Redaction helps reduce the exposure of personal information during downstream processing. It does not establish that every possible form of personal information has been removed.
 
-Each retry prints a log containing the ticket ID, retry number and wait duration.
+### 5.4 Zero-Shot and Few-Shot Classification
 
-`mock_llm.reset()` is called immediately before each full classification run.
+The project compares two classification approaches using the supplied offline `mock_llm.py` implementation.
 
-For each full run over the 156 eligible tickets:
+- **Zero-shot classification:** The classification request is made without providing labelled examples in the prompt.
+- **Few-shot classification:** The classification request includes examples to guide the expected output format and classification behaviour.
 
-| Retry result | Count |
-|---|---:|
-| Transient errors | 19 |
-| Recovered errors | 19 |
-| Permanent errors | 0 |
+The evaluation uses the 147 tickets that produced comparable classification results.
 
-All transient errors are recovered successfully.
+**Classification comparison**
 
-### 5.6 Output validation
-
-Every model response is validated before a category is accepted.
-
-The pipeline first attempts to parse the response as JSON. If the category is one of the four allowed values, the status is `classified_json`.
-
-If the response is not valid JSON, the pipeline extracts lowercase words using:
-
-```python
-re.findall(r"[a-z]+", text.lower())
-```
-
-If exactly one allowed category word is present, the result receives `classified_keyword`.
-
-All other outputs, including valid JSON containing an unsupported category, receive `flagged_invalid_output`.
-
-The pipeline never guesses a category for an invalid response.
-
-Validation results for a full comparison run:
-
-| Status | Tickets |
-|---|---:|
-| `classified_json` | 135 |
-| `classified_keyword` | 12 |
-| `flagged_invalid_output` | 9 |
-| `skipped_empty` | 4 |
-| `flagged_long` | 4 |
-| **Total** | **164** |
-
-A total of 147 tickets are successfully classified.
-
-### 5.7 Zero-shot and few-shot comparison
-
-The full pipeline is run once with each prompt without a token budget.
-
-| Metric | Zero-shot | Few-shot |
+| Measurement | Zero-shot | Few-shot |
 |---|---:|---:|
 | Classified tickets | 147 | 147 |
 | Accuracy | 85.71% | 100% |
-| Total tokens | 13,768 | 24,532 |
-| Tokens per classified ticket | 93.66 | 166.88 |
+| Token count | 13,768 | 24,532 |
 
-The zero-shot confusion table is:
+The few-shot approach achieved higher measured accuracy on this synthetic evaluation set, while using more estimated tokens.
 
-| Actual category | Predicted billing | Predicted delivery | Predicted technical | Predicted fraud |
-|---|---:|---:|---:|---:|
-| Billing | 38 | 0 | 0 | 0 |
-| Delivery | 0 | 36 | 0 | 0 |
-| Technical | 10 | 0 | 29 | 0 |
-| Fraud | 11 | 0 | 0 | 23 |
+These results describe the generated evaluation data and the deterministic offline model implementation. They should not be interpreted as real-world model accuracy.
 
-The few-shot prompt uses 10,764 additional tokens compared with the zero-shot prompt. This is an increase of approximately 78.18% in total token usage.
+### 5.5 Output Validation and Error Handling
 
-The extra few-shot tokens are worthwhile when classification accuracy is especially important for support operations. Zero-shot classification achieves 85.71% accuracy, while few-shot classification achieves 100% on the same 147 classified tickets. In particular, zero-shot errors include fraud and technical tickets incorrectly classified as billing, which could cause inappropriate routing. For a support workflow where incorrect fraud routing can have significant consequences, the higher few-shot token cost is justified.
+Classification output is checked before it is accepted.
 
-### 5.8 Token-budget demonstration
+The processing workflow accounts for:
 
-A token budget is checked before every model call.
+- Valid structured classification output.
+- Keyword-based fallback classification.
+- Invalid model output.
+- Empty ticket text.
+- Excessively long ticket text.
 
-If the running token total is already greater than or equal to the configured budget, no further model call is made and the ticket receives `budget_exhausted`.
+In the full classification run, the recorded status counts were:
 
-The zero-shot budget demonstration uses:
-
-```python
-TOKEN_BUDGET = 6000
-```
-
-Latest verified results:
-
-| Metric | Result |
+| Processing status | Records |
 |---|---:|
-| Configured budget | 6,000 |
-| Actual tokens consumed | 5,995 |
-| Tickets marked `budget_exhausted` | 88 |
-| Successfully classified | 64 |
-| `classified_json` | 59 |
-| `classified_keyword` | 5 |
-| `flagged_invalid_output` | 4 |
-| `skipped_empty` | 4 |
-| `flagged_long` | 4 |
+| Valid JSON classification | 135 |
+| Keyword fallback | 12 |
+| Invalid output flagged | 9 |
+| Empty tickets | 4 |
+| Long tickets flagged | 4 |
 
-The token count remains within the configured budget.
+The invalid-output and input-guardrail statuses are kept distinct from successfully classified tickets.
 
-The output is saved to:
+### 5.6 Token Estimation and Budget Enforcement
+
+The project uses the supplied `mock_llm.py` token estimator wherever token usage is required.
+
+The estimator is based on whitespace-separated word count multiplied by 1.3 and rounded up.
+
+The token-budget demonstration uses a configured budget of 6,000 tokens. The implementation checks the remaining budget before making another classification call.
+
+**Latest token-budget demonstration**
+
+| Measurement | Result |
+|---|---:|
+| Configured token budget | 6,000 |
+| Actual estimated tokens | 5,995 |
+| Budget-exhausted count | 88 |
+| Valid JSON classifications | 59 |
+| Keyword fallback classifications | 5 |
+| Invalid outputs flagged | 4 |
+| Empty tickets | 4 |
+| Long tickets flagged | 4 |
+| Classified tickets | 64 |
+
+The token-budget test completed successfully and printed:
 
 ```text
-outputs/triage_budget_demo.csv
+TOKEN BUDGET TEST PASSED
 ```
 
-### 5.9 Customer-segment-based ticket routing
+The 5,995-token result is the latest corrected demonstration result.
 
-The final classification run uses the few-shot prompt with a larger token budget.
+### 5.7 Ticket Routing and Priority
 
-The pipeline reads:
+After classification, tickets are routed using the classification results and customer information, including the customer segments produced by Part B.
 
-```text
-outputs/customer_segments.csv
-```
+**Final routing distribution**
 
-The customer segment information is merged with ticket results using `customer_id`.
-
-Routing follows these rules in order:
-
-1. Tickets with status `skipped_empty`, `flagged_long`, `flagged_invalid_output` or `budget_exhausted` are sent to `human_review` with `NORMAL` priority.
-2. Otherwise, tickets classified as `fraud` are sent to `security_team` with `HIGH` priority.
-3. Otherwise, tickets belonging to a customer whose `is_premium` value is true are sent to `premium_desk` with `HIGH` priority.
-4. All remaining successfully classified tickets are sent to `support_queue` with `NORMAL` priority.
-5. If a customer does not have a row in the segment file, that customer is treated as not premium.
-
-### 5.10 Final routing results
-
-The final output contains 164 tickets.
-
-| Route | Tickets |
+| Destination | Tickets |
 |---|---:|
-| `support_queue` | 102 |
-| `security_team` | 34 |
-| `human_review` | 17 |
-| `premium_desk` | 11 |
+| support_queue | 102 |
+| security_team | 34 |
+| human_review | 17 |
+| premium_desk | 11 |
 | **Total** | **164** |
 
-Priority distribution:
+**Priority distribution**
 
 | Priority | Tickets |
 |---|---:|
@@ -949,82 +919,46 @@ Priority distribution:
 | NORMAL | 119 |
 | **Total** | **164** |
 
-Final status distribution:
+The routing stage connects the support-ticket workflow with the customer intelligence generated in Part B.
 
-| Status | Tickets |
-|---|---:|
-| `classified_json` | 135 |
-| `classified_keyword` | 12 |
-| `flagged_invalid_output` | 9 |
-| `skipped_empty` | 4 |
-| `flagged_long` | 4 |
-| **Total** | **164** |
+### 5.8 Part C Evaluation Summary
 
-### 5.11 Output validation
+The Part C experiments demonstrate:
 
-The final output is saved to:
+- Input validation for empty and excessively long tickets.
+- PII redaction before classification.
+- Comparison of zero-shot and few-shot classification.
+- Structured-output validation and fallback handling.
+- Token estimation and budget enforcement.
+- Routing and priority assignment.
+- Use of Part B customer segment information during ticket routing.
 
-```text
-outputs/triage_results.csv
-```
+The results are based on the synthetic ticket dataset and the offline deterministic model stand-in.
 
-It contains exactly these columns:
-
-```text
-ticket_id, customer_id, status, category, segment_name, priority, route, tokens_used
-```
-
-Independent validation confirms:
-
-- 164 rows.
-- Eight required columns.
-- Zero duplicate ticket IDs.
-- Zero missing segment names.
-- All 34 fraud tickets routed to `security_team`.
-- All 17 tickets requiring human review routed to `human_review`.
-- All human-review tickets have `NORMAL` priority.
-- Blank categories are retained for tickets without a valid classification.
-
-Successfully classified tickets receive rule-validated categories based on the JSON or keyword validation rules. Tickets with empty text, excessive length or invalid model output are not assigned guessed categories and are sent to human review.
-
-### 5.12 Part C output files
-
-| Output | Purpose |
-|---|---|
-| `outputs/triage_budget_demo.csv` | Zero-shot classification results under the token budget |
-| `outputs/triage_results.csv` | Final few-shot classification and customer-based routing |
-
-The implementation prints:
-
-```text
-ALL FINAL PART C CHECKS PASSED
-```
+---
 
 ## 6. Part D – Policy RAG Assistant and Refund Agent
 
-### 6.1 Overview
+### 6.1 Objective
 
-Part D implements a policy question-answering assistant and a tool-using refund agent.
-
-It uses the policy documents generated by the supplied data generator, the SQLite database created in Part A and the supplied offline `mock_llm.py` interface.
+Part D implements a policy question-answering workflow and a tool-using refund agent.
 
 The implementation includes:
 
-- Policy document loading and chunking.
-- TF-IDF-based policy retrieval.
-- Retrieval-grounded question answering.
-- Retrieval evaluation.
-- Refund tools.
-- ReAct agent execution.
-- Safety checks and human escalation.
-- Token and iteration limits.
-- Checkpoint and resume functionality.
+1. Policy document loading and chunking.
+2. TF-IDF-based policy retrieval.
+3. Retrieval-augmented policy question answering.
+4. Evaluation using answerable and unanswerable questions.
+5. Tool definitions and validation.
+6. A ReAct-style refund agent.
+7. Token and time guardrails.
+8. Execution checkpointing and resume support.
 
-### 6.2 Policy document preparation
+The policy assistant and refund agent use the supplied offline `mock_llm.py` implementation. They do not connect to a live GPT API or an actual payment service.
 
-Five policy text documents are loaded from `data/policies/`.
+### 6.2 Policy Documents and Chunking
 
-The documents cover:
+Five policy documents are used as the knowledge base:
 
 - Refund policy.
 - Delivery policy.
@@ -1032,255 +966,343 @@ The documents cover:
 - Payment policy.
 - Privacy policy.
 
-The text is divided into chunks using:
+The documents are split into chunks using:
 
-| Setting | Value |
+- Chunk size: 40.
+- Overlap: 10.
+
+The resulting knowledge base contains 15 chunks.
+
+| Policy document | Chunks |
 |---|---:|
-| Chunk size | 40 |
-| Chunk overlap | 10 |
-| Expected chunks | 15 |
+| Refund | 4 |
+| Delivery | 3 |
+| Escalation | 3 |
+| Payment | 3 |
+| Privacy | 2 |
+| **Total** | **15** |
 
-The resulting 15 chunks are used as the retrieval knowledge base.
+Chunk overlap helps retain context across neighbouring chunks.
 
-### 6.3 TF-IDF retrieval
+### 6.3 TF-IDF Retrieval
 
-The retrieval system uses scikit-learn's `TfidfVectorizer` and cosine similarity.
+The retrieval implementation uses:
 
-TF-IDF assigns weights to terms based on their frequency in a document and how uncommon they are across the collection. Cosine similarity compares the query vector with document-chunk vectors to identify relevant policy text.
+- `TfidfVectorizer` from `sklearn.feature_extraction.text`.
+- Cosine similarity to compare the query with the policy chunks.
+- Top-three retrieval using `retrieve(query, k=3)`.
 
-The retrieval function accepts a question and returns the top three matching chunks.
+The retrieval process converts the policy chunks and user question into TF-IDF representations, compares their similarity and returns the three most relevant chunks.
 
-This implementation provides lexical retrieval. It is useful for matching policy terminology but may not recognize every semantic equivalent or paraphrase.
+This is a retrieval-based implementation rather than a vector database or embedding API integration.
 
-### 6.4 Retrieval-grounded policy assistant
+### 6.4 Retrieval-Augmented Policy Answering
 
-The `answer(question)` function:
+The policy answering function is:
 
-1. Accepts a user question.
-2. Retrieves the three most relevant policy chunks.
-3. Builds the policy context.
-4. Sends the system and user messages to `mock_llm.py`.
-5. Returns the generated answer or the configured fallback when sufficient information is unavailable.
+```python
+answer(question)
+```
 
-The assistant uses exactly two messages for its question-answering call.
+For each question, the workflow:
 
-The policy assistant is evaluated using the supplied `policy_eval.csv` dataset, containing 14 questions.
+1. Retrieves the three most relevant policy chunks.
+2. Prepares the policy context.
+3. Sends exactly two messages to `mock_llm`.
+4. Returns the resulting policy answer or the configured fallback when the question cannot be answered from the available policy context.
 
-Normal retrieval results:
+The fallback behaviour is important because the assistant should not invent policy information when the retrieved material does not support an answer.
 
-| Evaluation | Result |
+### 6.5 Policy Retrieval Evaluation
+
+The evaluation dataset, `policy_eval.csv`, contains 14 questions:
+
+- 12 answerable questions.
+- 2 unanswerable questions.
+
+The evaluation checks expected source documents, expected facts and fallback behaviour.
+
+**Evaluation with the configured overlap**
+
+| Evaluation check | Result |
 |---|---:|
 | Expected documents retrieved | 12/12 |
 | Expected facts retrieved | 12/12 |
-| Unanswerable questions using fallback | 2/2 |
+| Unanswerable questions handled with fallback | 2/2 |
 
-Zero-overlap retrieval results:
+**Evaluation with zero overlap**
 
-| Evaluation | Result |
+| Evaluation check | Result |
 |---|---:|
 | Expected documents retrieved | 12/12 |
 | Expected facts retrieved | 10/12 |
-| Unanswerable questions using fallback | 2/2 |
+| Unanswerable questions handled with fallback | 2/2 |
 
-The two fact misses in the zero-overlap evaluation concern sentence-splitting behaviour involving the 45-minute and 48-hour policy facts.
+With zero overlap, two expected facts were missed because of sentence splitting: the 45-minute delivery condition and the 48-hour condition.
 
-### 6.5 Refund-agent tools
+The comparison demonstrates why chunk overlap is useful for retaining policy context across chunk boundaries.
 
-Five tools are implemented and registered:
+### 6.6 Refund Agent Tools
+
+The agent uses five tools:
 
 | Tool | Purpose |
 |---|---|
-| `get_order` | Retrieve order information from the Part A database |
+| `get_order` | Retrieve order information |
 | `search_policy` | Retrieve relevant policy information |
-| `calculate_refund` | Calculate a refund using the policy rules |
-| `issue_refund` | Validate and record an eligible automatic refund |
-| `escalate_to_human` | Validate and record a refund requiring human review |
+| `calculate_refund` | Calculate the refund amount according to the policy |
+| `issue_refund` | Validate and record an eligible simulated refund |
+| `escalate_to_human` | Validate and record an eligible escalation |
 
-The tool definitions are registered through `TOOLS_SPEC` and `TOOL_MAP`.
+The tools are registered through `TOOLS_SPEC` and `TOOL_MAP`.
 
-The refund policy used by the tools is:
+The agent can request tool execution, receive tool observations and use those observations during its subsequent reasoning steps.
 
-- Only completed orders are eligible.
-- Orders delivered in more than 45 minutes are eligible for a full refund of the order amount.
-- Orders delivered in 45 minutes or less receive no refund.
-- Refund amounts above INR 1,000 are escalated to a human rather than automatically issued.
-- The simulated requests fall within the policy's seven-day request window.
+### 6.7 Refund Policy and Validation Rules
 
-The refund tools independently validate order status, delivery time, refund amount and applicable refund limits before recording an action.
+The implemented refund rules are:
 
-For example, an attempted automatic refund of INR 1,999 is rejected because it exceeds the automatic refund limit. An unnecessary escalation of an otherwise eligible INR 128.25 refund is also rejected.
+- Only completed orders are eligible for the refund calculation.
+- If delivery time is greater than 45 minutes, the refund amount is 100% of the order amount.
+- If delivery time is 45 minutes or less, the refund amount is zero.
+- Refund amounts greater than INR 1,000 must be escalated to a human.
+- The demonstrated scenarios are within the seven-day policy window.
 
-Refund actions are recorded in the refund ledger.
+**Refund validation**
 
-### 6.6 ReAct refund agent
+The `issue_refund` tool checks:
 
-The agent uses a ReAct-style workflow: it receives a request, selects a tool, observes the result and decides on the next action.
+1. The order exists.
+2. The order is completed.
+3. Delivery time is greater than 45 minutes.
+4. The refund amount is positive.
+5. The requested amount matches the calculated amount within a tolerance of INR 0.01.
+6. The refund amount does not exceed INR 1,000.
 
-The `run_agent()` function supports:
+**Human escalation validation**
 
-- Maximum iteration limits.
-- Token limits.
-- Execution time limits.
-- Tool-call tracking.
-- Final status reporting.
-- Checkpointing and resumption.
+The `escalate_to_human` tool checks:
 
-The configured agent limits include a maximum of six iterations, a token budget of 6,000 and a time limit of 10 seconds.
+1. The order exists.
+2. The order is completed.
+3. Delivery time is greater than 45 minutes.
+4. The refund amount is greater than INR 1,000.
+5. The requested amount matches the calculated amount.
 
-The supplied `mock_llm.py` provides deterministic offline behaviour for the agent demonstrations. It does not make live calls to a commercial language model.
+These checks prevent the agent from directly recording an invalid refund or escalation through the implemented tools.
 
-### 6.7 Agent scenario evaluation
+**Important:** These are simulated tool operations. They do not transfer money, contact an actual support team or update a real Swiggy system.
 
-Seven supplied agent scenarios are executed.
+### 6.8 ReAct Agent Execution
 
-| Scenario | Expected outcome | Result |
-|---|---|---|
-| S1 | Eligible automatic refund | REFUND |
-| S2 | Eligible automatic refund | REFUND |
-| S3 | Refund above automatic limit | ESCALATE |
-| S4 | Ineligible refund | DENIED |
-| S5 | Ineligible refund | DENIED |
-| S6 | Order not found | NOT_FOUND |
-| S7 | Maximum-iteration guardrail | FALLBACK_MAX_ITERATIONS |
+The refund agent is executed using:
 
-All seven scenarios pass their expected status checks. The evaluation also checks the refund amount against the actual tool observations.
+```python
+run_agent(
+    user_message,
+    scenario_id,
+    max_iterations=6,
+    token_limit=6000,
+    time_limit_seconds=10
+)
+```
 
-Additional guardrail demonstrations include:
+The agent follows a ReAct-style workflow:
 
-- A low token limit produces `FALLBACK_TOKEN_LIMIT`.
-- A zero-second execution limit produces `FALLBACK_TIMEOUT`.
-- A repeated-tool scenario reaches the maximum-iteration fallback.
+1. Receive the user request.
+2. Reason about the next required action.
+3. Request a tool call when needed.
+4. Execute the selected tool.
+5. Observe the tool result.
+6. Continue until a final result or a configured stopping condition is reached.
 
-### 6.8 Checkpoint and resume
+The maximum iteration count is six, the default token limit is 6,000, and the default time limit is 10 seconds.
 
-The agent saves its execution state after tool observations.
+### 6.9 Agent Scenario Evaluation
 
-The checkpoint contains the information needed to continue the workflow, including:
+Seven scenarios are used to evaluate the refund agent.
 
-- Run ID.
-- Conversation messages.
+| Scenario | Final result |
+|---|---|
+| S1 | REFUND – INR 128.25 |
+| S2 | REFUND – INR 135 |
+| S3 | ESCALATE – INR 1,999 |
+| S4 | DENIED |
+| S5 | DENIED |
+| S6 | NOT_FOUND |
+| S7 | FALLBACK_MAX_ITERATIONS |
+
+The scenarios cover eligible refunds, escalation, denied requests, missing orders and a maximum-iteration fallback.
+
+### 6.10 Token and Time Guardrails
+
+The agent includes token and time limits.
+
+**Token-limit demonstration**
+
+With a token limit of 200, the agent returned:
+
+```text
+FALLBACK_TOKEN_LIMIT
+```
+
+The recorded token count was 221, and no tools were executed.
+
+**Time-limit demonstration**
+
+With a time limit of zero, the agent returned:
+
+```text
+FALLBACK_TIMEOUT
+```
+
+No tool calls were executed.
+
+These demonstrations show that the configured guardrails can stop execution before the agent proceeds with tool operations.
+
+### 6.11 Checkpointing and Resume Support
+
+The agent records execution state and supports resuming an interrupted run.
+
+Checkpoint information includes:
+
+- Run identifiers.
+- Messages.
 - Token usage.
-- Completed steps.
-- Tool-call history.
+- Execution steps.
+- Tool calls and observations.
 
-The S1 demonstration simulates a crash after two tools have executed. The agent is resumed from the saved checkpoint.
+A checkpoint is saved after each tool observation.
 
-The resumed execution completes the remaining steps and produces the expected INR 128.25 refund. The previously completed tools are not repeated.
+**Resume demonstration**
 
-### 6.9 ReAct versus plan-and-execute
+Scenario S1 was interrupted after two tool calls and then resumed.
 
-The project compares ReAct with a plan-and-execute approach.
+The resumed execution completed with:
 
-ReAct was selected because it can choose the next action using the latest tool observation. This is useful for refund processing because eligibility, order status and escalation decisions depend on the results returned by earlier tools.
+| Measurement | Result |
+|---|---:|
+| Final result | REFUND |
+| Refund amount | INR 128.25 |
+| Total tool calls | 5 |
+| Total tokens | 1,807 |
 
-The measured demonstrations include:
+The resumed workflow completed without repeating the previously completed tool calls in the demonstration.
 
-| Scenario | ReAct tool/model calls |
+### 6.12 ReAct and Plan-and-Execute Comparison
+
+The project includes a comparison of ReAct and plan-and-execute approaches.
+
+The comparison is documented within the implementation in fewer than 250 words.
+
+Observed ReAct tool-call counts include:
+
+| Scenario | Tool calls |
 |---|---:|
 | S1 | 5 |
 | S5 | 3 |
 | S6 | 2 |
 
-The comparison considers execution behaviour, tool observations and the need to handle failures and policy restrictions.
+ReAct is selected for the implemented workflow because it supports sequential reasoning using the observations returned by tools. The agent can decide its next action based on the result of the previous tool call.
 
-### 6.10 Part D validation
+### 6.13 Part D Execution Records
 
-The Part D demonstrations check:
+Agent execution records are stored in:
 
-- Policy chunk creation.
-- Retrieval and fallback behaviour.
-- Refund eligibility.
-- Tool registration.
-- Automatic refund restrictions.
-- Human escalation restrictions.
-- Agent scenario outcomes.
-- Token, timeout and iteration guardrails.
-- Checkpoint and resume behaviour.
+```text
+outputs/agent_runs.jsonl
+```
 
-The implementation uses local synthetic data and the deterministic offline mock interface, so no live LLM API key is required.
+The agent also uses checkpoint and state files to support resumable execution.
 
-## 7. Project Outputs
+The latest audit reported 14 records in the execution log, with the latest seven scenario records passing their checks.
 
-Important generated outputs include:
+The master runner backs up existing agent ledger and state files before running the agent demonstrations, helping preserve previous execution records.
 
-| Output | Purpose |
+### 6.14 Part D Evaluation Summary
+
+The Part D implementation demonstrates:
+
+- Policy document loading.
+- Chunking with overlap.
+- TF-IDF retrieval and cosine similarity.
+- Top-three policy retrieval.
+- Policy question answering with fallback handling.
+- Evaluation of answerable and unanswerable questions.
+- Five registered agent tools.
+- Refund amount calculation and validation.
+- Human escalation validation.
+- ReAct-style tool execution.
+- Token and time guardrails.
+- Checkpointing and resume support.
+- Evaluation across seven agent scenarios.
+
+The implementation uses synthetic data, local policy documents and simulated tool operations. It does not issue real refunds or connect to an external payment system.
+
+---
+
+## 7. Project Outputs and Validation Summary
+
+The project produces intermediate and final outputs across its four connected parts.
+
+### Part A
+
+- Cleaned customer, product and order datasets.
+- SQLite analytical database.
+- SQL query results.
+- Pandas analysis results.
+- Part A validation results.
+
+### Part B
+
+- Customer RFM segments.
+- K-Means comparison results.
+- Lapse prediction dataset.
+- Saved Random Forest model.
+- Model comparison and feature-importance results.
+- Premium customer retention shortlist.
+
+### Part C
+
+- Ticket classification results.
+- Redacted ticket text.
+- Classification and fallback status information.
+- Token-budget demonstration results.
+- Routed tickets and priority assignments.
+
+### Part D
+
+- Policy retrieval and evaluation results.
+- Agent execution records.
+- Simulated refund and escalation outcomes.
+- Agent checkpoint and resume state.
+
+### Validation status
+
+| Part | Validation evidence |
 |---|---|
-| `data/instamart.db` | SQLite database containing customers, products and orders |
-| `data/clean/customers.csv` | Cleaned customer data |
-| `data/clean/products.csv` | Cleaned product data |
-| `data/clean/orders.csv` | Cleaned order data |
-| `outputs/customer_segments.csv` | Customer RFM values, segment assignments and Premium flag |
-| `outputs/kmeans_comparison.csv` | K-means inertia and silhouette comparison |
-| `outputs/lapse_dataset.csv` | Customer features and lapse labels |
-| `outputs/lapse_model.joblib` | Saved lapse prediction model |
-| `outputs/retention_list.csv` | Top Premium customers ranked by predicted lapse probability |
-| `outputs/triage_budget_demo.csv` | Token-budget classification demonstration |
-| `outputs/triage_results.csv` | Final support-ticket classification and routing |
-| `outputs/agent_runs.jsonl` | Refund-agent execution records |
-| `outputs/refund_ledger.jsonl` | Simulated refund and escalation records |
-| `state/` | Agent checkpoint and resume state |
+| Part A | Validation script reports `ALL CHECKPOINTS PASSED`. |
+| Part B | Validation script reports `ALL PART B CHECKPOINTS PASSED`; model reload reproduces test predictions exactly. |
+| Part C | Token-budget demonstration reports `TOKEN BUDGET TEST PASSED`; classification and routing results are recorded. |
+| Part D | Policy retrieval evaluation, seven agent scenarios, guardrail demonstrations and resume demonstration have recorded results. |
 
-Some output and state files are generated or updated when the pipeline is run.
+---
 
 ## 8. Limitations and Next Steps
 
 - The datasets are synthetic and do not represent actual Swiggy customer or transaction records.
-- Part A establishes the cleaned data foundation and analytical database for the later project components.
+- The project does not connect to a live Swiggy database or production support system.
+- The supplied `mock_llm.py` is a deterministic offline stand-in. No live GPT API integration is implemented.
+- Part C currently processes tickets from a CSV batch workflow. A separate interactive customer text-entry frontend is not implemented.
+- The ticket classification results are measured on the generated synthetic evaluation data and should not be interpreted as real-world model performance.
+- PII redaction covers the targeted email, phone and order-ID patterns. It does not establish that every possible form of personal information is removed.
+- The lapse model uses historical synthetic customer behaviour and may not generalize to real customer behaviour.
+- The Premium retention shortlist uses a whole-window RFM segment flag that includes September 2025. It is illustrative and is not a leakage-free historical evaluation. The lapse prediction model itself uses only pre-cutoff features.
+- The retention shortlist contains 10 customers, of whom 1 was actually lapsed in the evaluated data. It should not be presented as a highly accurate retention list.
+- Model performance is evaluated on the generated synthetic dataset and should not be interpreted as real-world business performance.
+- Policy retrieval uses TF-IDF and cosine similarity rather than an external embedding service or vector database.
+- Refund and escalation tools perform simulated operations. They do not issue actual payments, contact real support staff or update production systems.
+- The agent's token estimator is the supplied approximate estimator and should not be interpreted as the exact token count of a commercial LLM.
 - Correlation analysis identifies statistical relationships but does not establish causal effects.
-- The lapse prediction model is trained and evaluated using a historical synthetic dataset; its performance may differ on real customer behaviour.
-- The Premium flag is derived from whole-window RFM information, including the September period used to define the lapse label. Therefore, the retention list is illustrative and is not a leakage-free evaluation.
-- Part C uses the supplied deterministic offline `mock_llm.py` implementation. Its classification results demonstrate the pipeline's guardrails, retry handling, validation and routing logic rather than the performance of a production language model.
-- Part D uses lexical TF-IDF retrieval. It may not identify all semantically equivalent policy questions.
-- The refund agent is a simulated academic workflow. It does not issue real refunds or interact with Swiggy's production systems.
-- The project uses synthetic scenarios and an offline mock model; production deployment would require secure integrations, monitoring, authentication and further testing.
 
-Future improvements could include:
-
-- Evaluating the lapse model on additional time periods.
-- Testing the model with real, appropriately authorized customer data.
-- Improving retrieval with semantic embeddings and more comprehensive policy evaluation.
-- Integrating a production language model with suitable privacy and security controls.
-- Connecting the agent to authorized production systems only after appropriate human approval and safety testing.
-
-## 9. Project Structure
-
-```text
-Instamart-Customer-Intelligence-Copilot/
-│
-├── data/
-│   ├── raw/
-│   ├── clean/
-│   ├── policies/
-│   └── instamart.db
-│
-├── outputs/
-│
-├── sql/
-│   └── queries.sql
-│
-├── src/
-│   ├── audit_raw_data.py
-│   ├── clean_data.py
-│   ├── create_database.py
-│   ├── validate_part_a.py
-│   ├── run_sql_analysis.py
-│   ├── build_customer_segments.py
-│   ├── prepare_lapse_data.py
-│   ├── train_lapse_models.py
-│   ├── create_retention_list.py
-│   ├── validate_part_b.py
-│   ├── triage_tickets.py
-│   ├── policy_rag.py
-│   ├── refund_tools.py
-│   └── refund_agent.py
-│
-├── state/
-├── backups/
-├── generate_data.py
-├── mock_llm.py
-├── run_project.py
-├── requirements.txt
-└── README.md
-```
-
-The project structure above lists the principal implementation files and directories. Generated files may be added within `data/`, `outputs/`, `state/` and `backups/` during execution.
+Parts A, B, C and D have been implemented with the outputs and evaluation results documented above. The project demonstrates a connected synthetic customer intelligence and support workflow, from raw-data preparation through customer segmentation, ticket triage, policy retrieval and simulated refund-agent execution.
