@@ -118,11 +118,67 @@ For Part C, the input ticket file is `data/raw/tickets.csv`. To test another com
 The following individual commands have been used for the corresponding module checks:
 
 ```powershell
+# Part A – audit the raw data
+python -m src.audit_raw_data
+
 # Part A – clean the raw data
 python -m src.clean_data
 
+# Part A – create sqlite database
+python -m src.create_database
+
+# Part A – execute the sql queries
+python -m src.run_sql_analysis
+
+# Part A – Validating Part A
+python -m src.validate_part_a
+
+Where to inspect the results:
+- data/raw/ – original generated datasets.
+- data/clean/ – cleaned orders.csv and products.csv.
+- data/instamart.db – SQLite database.
+- sql/queries.sql – SQL queries.
+- outputs/ – generated analysis or validation outputs, if produced by the scripts.
+
+# Part B - Calculates RFM values and creates customer segments
+python -m src.build_customer_segments
+
+# Part B - Prepares the customer dataset for lapse prediction
+python -m src.prepare_lapse_data
+
+# Part B - Trains and evaluates the lapse-prediction models
+python -m src.train_lapse_models
+
+# Part B - Generates the customer retention list from the customer intelligence results
+python -m src.create_retention_list
+
+# Part B - Validates Part B requirements
+python -m src.validate_part_b
+
+Where to inspect the results:
+- data/instamart.db – customer and segmentation data.
+- outputs/ – model evaluation results, prediction results and retention list, according to the filenames produced by the scripts.
+- src/ – model training and preparation code.
+
+# Part C - Redacts sensitive information, classifies tickets, assigns priority and routes tickets using customer information from Part B
+python -m src.triage_tickets
+ 
+Where to inspect the results:
+- data/raw/tickets.csv – input customer complaints.
+- outputs/ – processed ticket results, including predicted categories, priorities and routing information.
+
+# Part D – 	Implements policy retrieval and policy question answering
+python -m src.policy_rag
+
 # Part D – run the refund agent and its scenarios
 python -m src.refund_agent
+
+Where to inspect the results:
+- data/policies/ – policy documents used for retrieval.
+- data/raw/agent_scenarios.csv – agent test scenarios.
+- data/raw/policy_eval.csv – policy retrieval evaluation data.
+- state/ – saved agent checkpoints, including the resume demonstration.
+- outputs/ – generated evaluation and agent results, if saved there.
 ```
 
 For the complete integrated workflow, use `python generate_data.py` followed by `python run_project.py` as shown above. This README does not prescribe separate Part B or Part C module commands; use the integrated workflow rather than guessing module names.
