@@ -185,8 +185,30 @@ Where to inspect the results:
 - outputs/ – generated evaluation and agent results, if saved there.
 ```
 
-For the complete integrated workflow, use `python generate_data.py` followed by `python run_project.py` as shown above.
+# Swiggy Customer Intelligence Project
 
+## Table of Contents
+
+- [How to Run](#how-to-run)
+- [Part A – Data Foundation](#part-a--data-foundation)
+- [Part B – Customer Intelligence](#part-b--customer-intelligence)
+- [Part C – Support Ticket Intelligence](#part-c--support-ticket-intelligence)
+- [Part D – Policy Q&A and Refund Agent](#part-d--policy-qa-and-refund-agent)
+- [Limitations](#limitations)
+- [Next Steps](#next-steps)
+
+---
+
+## How to Run
+
+For the complete integrated workflow, use `python generate_data.py` followed by `python run_project.py` as shown below.
+
+```bash
+python generate_data.py
+python run_project.py
+```
+
+---
 
 ## Part A – Data Foundation
 
@@ -196,12 +218,12 @@ The raw datasets were audited for missing values, duplicates, invalid values, in
 
 | Dataset | Rows | Columns | Important audit findings |
 |---|---:|---:|---|
-| customers.csv | 1,200 | 5 | 61 missing ages; 30 missing genders |
-| products.csv | 40 | 4 | No missing values |
-| orders.csv | 13,084 | 9 | 53 missing order amounts; 2,541 missing delivery times |
-| tickets.csv | 164 | 5 | No missing values |
-| policy_eval.csv | 14 | 3 | 2 missing expected facts |
-| agent_scenarios.csv | 7 | 5 | No missing values |
+| `customers.csv` | 1,200 | 5 | 61 missing ages; 30 missing genders |
+| `products.csv` | 40 | 4 | No missing values |
+| `orders.csv` | 13,084 | 9 | 53 missing order amounts; 2,541 missing delivery times |
+| `tickets.csv` | 164 | 5 | No missing values |
+| `policy_eval.csv` | 14 | 3 | 2 missing expected facts |
+| `agent_scenarios.csv` | 7 | 5 | No missing values |
 
 Additional raw-data quality checks identified:
 
@@ -241,7 +263,7 @@ Customer city values were stripped and standardised, and gender values were norm
 
 Order timestamps were parsed, exact duplicate rows were removed, and duplicate order IDs were resolved by retaining the latest record. Order statuses were standardised, and pending orders were handled by the cleaning process. Missing order amounts were imputed using product price, quantity and discount. Negative delivery times were treated as missing, and missing delivery times for completed orders were filled using product-category medians. Missing delivery times for cancelled orders were retained.
 
-**Count clarification:** The raw audit identified 656 pending orders, while the cleaning log reported zero pending orders removed separately. The 656 figure in the table refers to duplicate order IDs resolved, not pending orders removed.
+> **Count clarification:** The raw audit identified 656 pending orders, while the cleaning log reported zero pending orders removed separately. The 656 figure in the table refers to duplicate order IDs resolved, not pending orders removed.
 
 ### Database and validation
 
@@ -274,6 +296,8 @@ Key results:
 - Total cumulative completed-order revenue was INR 2,998,668.80.
 
 EDA on completed orders showed a mean order amount of INR 269.91 and a median of INR 135. The distribution was right-skewed, with skewness of 4.61. The IQR upper fence was INR 645.30, identifying 897 upper outliers. Order amount had a weak negative correlation with discount percentage (-0.095) and a weak positive correlation with quantity (0.087). These correlations do not establish causation.
+
+---
 
 ## Part B – Customer Intelligence
 
@@ -326,6 +350,8 @@ Random Forest was selected based on its higher cross-validation F1-score among t
 The leading Random Forest feature importances were frequency (0.2796), monetary value (0.2712) and recency (0.1151).
 
 A retention shortlist of 10 customers was generated. One customer in that shortlist was labelled as actually lapsed.
+
+---
 
 ## Part C – Support Ticket Intelligence
 
@@ -424,7 +450,7 @@ Therefore:
 - **147 tickets were classified:** 135 through JSON validation and 12 through keyword fallback.
 - **17 tickets were sent for human review:** 9 invalid, 4 empty and 4 over-length.
 
-**Important validation distinction:** JSON and keyword checks validate the response structure and whether an allowed category can be identified. They do not independently verify whether the predicted category is semantically correct for the customer's actual issue. Classification accuracy is evaluated separately against the labelled evaluation data.
+> **Important validation distinction:** JSON and keyword checks validate the response structure and whether an allowed category can be identified. They do not independently verify whether the predicted category is semantically correct for the customer's actual issue. Classification accuracy is evaluated separately against the labelled evaluation data.
 
 ### Token-budget demonstration
 
@@ -452,18 +478,18 @@ Routing results:
 
 | Route | Tickets |
 |---|---:|
-| support_queue | 102 |
-| security_team | 34 |
-| premium_desk | 11 |
-| human_review | 17 |
+| `support_queue` | 102 |
+| `security_team` | 34 |
+| `premium_desk` | 11 |
+| `human_review` | 17 |
 | **Total** | **164** |
 
 Priority results:
 
 | Priority | Tickets |
 |---|---:|
-| NORMAL | 119 |
-| HIGH | 45 |
+| `NORMAL` | 119 |
+| `HIGH` | 45 |
 | **Total** | **164** |
 
 The routing process uses the predicted category and customer segment. Fraud tickets are routed to the security team with high priority. Premium customers with non-fraud issues are routed to the premium desk with high priority. Other valid tickets are routed to the support queue with normal priority. Empty, over-length and invalid tickets are routed to human review.
@@ -473,6 +499,8 @@ The final output includes ticket ID, customer ID, processing status, category, c
 ### Retry handling
 
 The pipeline includes retry handling for transient errors. A total of 19 transient errors were recovered during execution.
+
+---
 
 ## Part D – Policy Q&A and Refund Agent
 
@@ -524,13 +552,13 @@ The agent validates order status, delivery time, refund amount and tool argument
 
 | Scenario | Outcome | LLM calls | Tokens | Validation |
 |---|---|---:|---:|---|
-| S1 | REFUND – INR 128.25 | 5 | 1,807 | PASS |
-| S2 | REFUND – INR 135.00 | 5 | 1,807 | PASS |
-| S3 | ESCALATE | 5 | 1,797 | PASS |
-| S4 | DENIED | 4 | 1,333 | PASS |
-| S5 | DENIED | 3 | 883 | PASS |
-| S6 | NOT_FOUND | 2 | 436 | PASS |
-| S7 | FALLBACK_MAX_ITERATIONS | 6 | 4,092 | PASS |
+| S1 | `REFUND` – INR 128.25 | 5 | 1,807 | PASS |
+| S2 | `REFUND` – INR 135.00 | 5 | 1,807 | PASS |
+| S3 | `ESCALATE` | 5 | 1,797 | PASS |
+| S4 | `DENIED` | 4 | 1,333 | PASS |
+| S5 | `DENIED` | 3 | 883 | PASS |
+| S6 | `NOT_FOUND` | 2 | 436 | PASS |
+| S7 | `FALLBACK_MAX_ITERATIONS` | 6 | 4,092 | PASS |
 
 All seven scenario records passed their recorded validation checks. The seven scenarios used 30 LLM calls and 12,155 tokens in total.
 
@@ -583,6 +611,8 @@ The agent uses a ReAct-style approach: it reasons about the current request, sel
 
 Unlike a plan-and-execute approach, which prepares a plan before carrying out its steps, ReAct interleaves reasoning and actions. This project implements the ReAct-style tool loop.
 
+---
+
 ## Limitations
 
 - The datasets are synthetic and do not represent real Swiggy customer records.
@@ -593,6 +623,8 @@ Unlike a plan-and-execute approach, which prepares a plan before carrying out it
 - The retention shortlist contains 10 customers, of whom one was labelled as actually lapsed.
 - The Premium flag in the retention list is a **post-hoc whole-window label** derived from RFM segmentation using the full order period. It was not used as a feature in the lapse prediction model. Because it uses information from the full order window, including information after the historical cutoff, it is not a leakage-free prospective prediction. Therefore, the retention list is **illustrative** and should not be interpreted as a fully leakage-free prospective retention recommendation.
 - Refund actions are simulated in the local project; no real payments or customer-support actions are performed.
+
+---
 
 ## Next Steps
 
