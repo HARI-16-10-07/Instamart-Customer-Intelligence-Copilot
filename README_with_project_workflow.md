@@ -185,19 +185,8 @@ Where to inspect the results:
 - outputs/ – generated evaluation and agent results, if saved there.
 ```
 
-For the complete integrated workflow, use `python generate_data.py` followed by `python run_project.py` as shown above. This README does not prescribe separate Part B or Part C module commands; use the integrated workflow rather than guessing module names.
+For the complete integrated workflow, use `python generate_data.py` followed by `python run_project.py` as shown above.
 
-### 6. Quick verification checklist
-
-- [ ] The virtual environment is active (the terminal prompt begins with `(venv)`).
-- [ ] `generate_data.py` completes and the input datasets are available under `data/`.
-- [ ] `run_project.py` completes without an unhandled error.
-- [ ] Part C results can be inspected in `outputs/triage_results.csv`.
-- [ ] Part D agent logs and refund ledger can be inspected under `outputs/`.
-- [ ] Part D checkpoint files can be inspected under `state/`.
-- [ ] Review the Part A and Part B outputs under `data/` and `outputs/` and compare the results with the evaluation tables documented in this README.
-
-**Note:** The exact Part A and Part B artifact filenames are not listed here because they are not established in the current README. Check the actual files generated in `data/` and `outputs/`; do not assume a filename that is not present in your repository.
 
 ## Part A – Data Foundation
 
