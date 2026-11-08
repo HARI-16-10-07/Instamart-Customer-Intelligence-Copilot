@@ -132,7 +132,7 @@ python -m src.run_sql_analysis
 
 # Part A – Validating Part A
 python -m src.validate_part_a
-
+```
 Where to inspect the results:
 - data/raw/ – original generated datasets.
 - data/clean/ – cleaned orders.csv and products.csv.
@@ -140,6 +140,7 @@ Where to inspect the results:
 - sql/queries.sql – SQL queries.
 - outputs/ – generated analysis or validation outputs, if produced by the scripts.
 
+```powershell
 # Part B - Calculates RFM values and creates customer segments
 python -m src.build_customer_segments
 
@@ -154,24 +155,27 @@ python -m src.create_retention_list
 
 # Part B - Validates Part B requirements
 python -m src.validate_part_b
-
+```
 Where to inspect the results:
 - data/instamart.db – customer and segmentation data.
 - outputs/ – model evaluation results, prediction results and retention list, according to the filenames produced by the scripts.
 - src/ – model training and preparation code.
 
+```powershell
 # Part C - Redacts sensitive information, classifies tickets, assigns priority and routes tickets using customer information from Part B
 python -m src.triage_tickets
- 
+``` 
 Where to inspect the results:
 - data/raw/tickets.csv – input customer complaints.
 - outputs/ – processed ticket results, including predicted categories, priorities and routing information.
 
+```powershell
 # Part D – 	Implements policy retrieval and policy question answering
 python -m src.policy_rag
 
 # Part D – run the refund agent and its scenarios
 python -m src.refund_agent
+```
 
 Where to inspect the results:
 - data/policies/ – policy documents used for retrieval.
