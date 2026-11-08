@@ -185,19 +185,6 @@ Where to inspect the results:
 - outputs/ – generated evaluation and agent results, if saved there.
 ```
 
-# Swiggy Customer Intelligence Project
-
-## Table of Contents
-
-- [How to Run](#how-to-run)
-- [Part A – Data Foundation](#part-a--data-foundation)
-- [Part B – Customer Intelligence](#part-b--customer-intelligence)
-- [Part C – Support Ticket Intelligence](#part-c--support-ticket-intelligence)
-- [Part D – Policy Q&A and Refund Agent](#part-d--policy-qa-and-refund-agent)
-- [Limitations](#limitations)
-- [Next Steps](#next-steps)
-
----
 
 ## How to Run
 
